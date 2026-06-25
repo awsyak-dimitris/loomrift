@@ -25,20 +25,29 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 #burger-btn span{display:block;height:1.5px;background:#8a92a8;border-radius:2px;transition:all .2s}
 
 /* SIDEBAR */
-#sidebar{position:absolute;top:46px;left:0;width:240px;height:calc(100vh - 46px);background:#161820;border-right:0.5px solid #2a2d3a;z-index:15;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;overflow-x:hidden}
+#sidebar{position:absolute;top:46px;left:0;width:260px;height:calc(100vh - 46px);background:#161820;border-right:0.5px solid #2a2d3a;z-index:15;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;overflow-x:hidden;padding-bottom:40px}
 #sidebar.open{transform:translateX(0)}
-#sidebar-title{padding:16px 16px 10px;font-size:10px;font-weight:600;color:#5a6070;letter-spacing:.1em;text-transform:uppercase}
-.tree-item{display:flex;align-items:center;gap:0;cursor:pointer;position:relative;user-select:none}
-.tree-item:hover > .tree-row{background:rgba(255,255,255,0.04)}
-.tree-row{display:flex;align-items:center;gap:8px;padding:5px 12px;flex:1;border-radius:6px;margin:0 4px}
-.tree-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.tree-icon img{width:14px;height:14px;object-fit:contain}
-.tree-label{font-size:12px;color:#c0c8d8;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tree-toggle{width:14px;font-size:9px;color:#5a6070;flex-shrink:0;text-align:center}
-.tree-children{padding-left:16px;border-left:0.5px solid #2a2d3a;margin-left:20px}
-.tree-children.hidden{display:none}
-.tree-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#sidebar-header{padding:14px 16px 8px;font-size:10px;font-weight:600;color:#5a6070;letter-spacing:.12em;text-transform:uppercase;border-bottom:0.5px solid #2a2d3a;margin-bottom:4px}
 
+/* Tree — Finder style */
+.ti{display:flex;flex-direction:column}
+.ti-row{display:flex;align-items:center;height:26px;cursor:pointer;border-radius:6px;margin:0 4px;padding:0 6px 0 0;user-select:none;transition:background .12s;min-width:0}
+.ti-row:hover{background:rgba(255,255,255,0.055)}
+.ti-row.active{background:rgba(58,122,208,0.18)}
+.ti-arrow{width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#5a6070;font-size:9px;transition:transform .15s}
+.ti-arrow.open{transform:rotate(0deg)}
+.ti-arrow.closed{transform:rotate(-90deg)}
+.ti-arrow.leaf{opacity:0}
+.ti-ico{width:14px;height:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-right:5px}
+.ti-ico img{width:12px;height:12px;object-fit:contain;opacity:0.75}
+.ti-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:6px}
+.ti-lbl{font-size:12px;color:#c8cdd8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;line-height:1}
+.ti-role{font-size:10px;color:#5a6070;white-space:nowrap;margin-left:4px;flex-shrink:0}
+.ti-children{display:flex;flex-direction:column}
+.ti-children.hidden{display:none}
+/* indent line */
+.ti-indent{display:flex;flex-direction:column;padding-left:8px;position:relative}
+.ti-indent::before{content:"";position:absolute;left:15px;top:0;bottom:0;width:0.5px;background:#2a2d3a}
 /* HINT */
 #hint{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(22,24,31,0.85);border:0.5px solid #2e3140;border-radius:10px;padding:5px 16px;font-size:10px;color:#8a92a8;pointer-events:none;white-space:nowrap;transition:left .28s}
 #tooltip{position:absolute;display:none;background:rgba(22,24,31,0.95);border:0.5px solid #2e3140;border-radius:10px;padding:8px 12px;pointer-events:none;z-index:30;min-width:100px}
@@ -100,7 +109,7 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 
   <!-- SIDEBAR -->
   <div id="sidebar">
-    <div id="sidebar-title">Структура</div>
+    <div id="sidebar-header">Структура</div>
     <div id="tree-root"></div>
   </div>
 
@@ -327,47 +336,53 @@ var sidebarExpandedIds=new Set(["mixa"]);
 function buildSidebarTree(){
   var root2=document.getElementById("tree-root");
   root2.innerHTML="";
-  function buildItem(n,depth){
+
+  function makeItem(n, depth){
     var wrap=document.createElement("div");
-    wrap.className="tree-item";
-    wrap.style.paddingLeft=(depth*14)+"px";
+    wrap.className="ti";
 
+    // Row
     var row=document.createElement("div");
-    row.className="tree-row";
+    row.className="ti-row"+(n.id===selId?" active":"");
+    // indent = depth * 16px (arrow width) via nested ti-indent, but we do it manually
+    row.style.paddingLeft=(depth*16+4)+"px";
 
-    // toggle arrow
-    var toggle=document.createElement("span");
-    toggle.className="tree-toggle";
-    toggle.textContent=n.children.length?(sidebarExpandedIds.has(n.id)?"▼":"▶"):"";
-    row.appendChild(toggle);
+    // Arrow toggle
+    var arrow=document.createElement("span");
+    arrow.className="ti-arrow "+(n.children.length===0?"leaf":(sidebarExpandedIds.has(n.id)?"open":"closed"));
+    arrow.innerHTML=n.children.length?"&#9660;":"";
+    row.appendChild(arrow);
 
-    // icon
-    var iconWrap=document.createElement("div");iconWrap.className="tree-icon";
-    var ic=document.createElement("img");
-    var shKey=n.shape==="hexagon"?"triangle":n.shape;
-    if(!ICONS[shKey])shKey="circle";
-    ic.src=ICONS[shKey].def;
-    ic.style.filter="brightness(0) saturate(100%) invert(1)";
-    ic.style.opacity="0.5";
-    iconWrap.appendChild(ic);
-    row.appendChild(iconWrap);
+    // Shape icon
+    var ico=document.createElement("div");ico.className="ti-ico";
+    var img=document.createElement("img");
+    var sk=n.shape==="hexagon"?"triangle":(n.shape==="main"?"main":n.shape);
+    if(!ICONS[sk])sk="circle";
+    img.src=ICONS[sk].def;
+    img.style.filter="brightness(0) invert(1)";
+    img.style.opacity="0.55";
+    ico.appendChild(img);row.appendChild(ico);
 
-    // color dot
-    var dot=document.createElement("div");dot.className="tree-dot";
+    // Color dot
+    var dot=document.createElement("div");dot.className="ti-dot";
     var col=nodeEffCol[n.id]||n.color;
     dot.style.background="#"+(col).toString(16).padStart(6,"0");
     row.appendChild(dot);
 
-    // label
-    var lbl=document.createElement("span");lbl.className="tree-label";lbl.textContent=n.label;
+    // Label
+    var lbl=document.createElement("span");lbl.className="ti-lbl";lbl.textContent=n.label;
     row.appendChild(lbl);
 
+    // Role (muted, short)
+    var role=document.createElement("span");role.className="ti-role";role.textContent=n.role;
+    row.appendChild(role);
+
+    // Click: toggle expand + focus
     row.addEventListener("click",function(e){
       e.stopPropagation();
-      // Focus node in 3D
       if(visibleNodes.has(n.id)){
         tPan.set(n.targetPos.x,n.targetPos.y,0);
-        tSph.radius=Math.max(100,n.sz*14);
+        tSph.radius=Math.max(80,Math.min(400,n.sz*14));
       }
       if(n.children.length){
         if(sidebarExpandedIds.has(n.id))sidebarExpandedIds.delete(n.id);
@@ -376,17 +391,19 @@ function buildSidebarTree(){
       }
     });
     row.addEventListener("contextmenu",function(e){e.preventDefault();showCtxMenu(n.id,e.clientX,e.clientY);});
-
     wrap.appendChild(row);
 
-    if(n.children.length&&sidebarExpandedIds.has(n.id)){
-      var ch=document.createElement("div");ch.className="tree-children";
-      n.children.forEach(function(c){ch.appendChild(buildItem(c,0));});
+    // Children
+    if(n.children.length){
+      var ch=document.createElement("div");
+      ch.className="ti-children"+(sidebarExpandedIds.has(n.id)?"":" hidden");
+      n.children.forEach(function(c){ch.appendChild(makeItem(c,depth+1));});
       wrap.appendChild(ch);
     }
     return wrap;
   }
-  root2.appendChild(buildItem(root,0));
+
+  root2.appendChild(makeItem(nodeMap["mixa"],0));
 }
 
 // ---- CONTEXT MENU ----

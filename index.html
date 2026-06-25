@@ -895,56 +895,183 @@ function proj(p3){var v=p3.clone();v.project(camera);return{x:(v.x*.5+.5)*W,y:(-
 function scrRad(n){var e3=n.pos.clone().add(new THREE.Vector3(n.sz*.5,0,0));var c2=proj(n.pos),e2=proj(e3);return Math.sqrt(Math.pow(e2.x-c2.x,2)+Math.pow(e2.y-c2.y,2));}
 function shorten(ax,ay,bx,by,amt){var dx=bx-ax,dy=by-ay,d=Math.sqrt(dx*dx+dy*dy);if(d<amt*2)return{x:ax,y:ay};var t=amt/d;return{x:ax+dx*t,y:ay+dy*t};}
 
+// Path animation — running dot along path
+var pathDotPos={x:0,y:0}; // current dot screen position
+var pathDotProgress=0;     // 0..1 across entire path length
+var pathDotSpeed=0.28;     // path units per second (faster)
+var pathFlicker=0;
+
+function getPathScreenPoints(){
+  // Build ordered screen positions along path
+  var pts=[];
+  for(var i=0;i<pathAnim.nodes.length;i++){
+    var nid=pathAnim.nodes[i];
+    if(!visNodes.has(nid))continue;
+    var nd=nodeMap[nid];
+    pts.push(proj(nd.pos));
+  }
+  return pts;
+}
+
+function getTotalPathLen(pts){
+  var len=0;
+  for(var i=1;i<pts.length;i++){
+    var dx=pts[i].x-pts[i-1].x,dy=pts[i].y-pts[i-1].y;
+    len+=Math.sqrt(dx*dx+dy*dy);
+  }
+  return len;
+}
+
+function getPosAlongPath(pts,t){
+  // t = 0..1 normalized along total path
+  var total=getTotalPathLen(pts);
+  var target=t*total,acc=0;
+  for(var i=1;i<pts.length;i++){
+    var dx=pts[i].x-pts[i-1].x,dy=pts[i].y-pts[i-1].y;
+    var seg=Math.sqrt(dx*dx+dy*dy);
+    if(acc+seg>=target){
+      var f=(target-acc)/seg;
+      return{x:pts[i-1].x+dx*f,y:pts[i-1].y+dy*f,segIdx:i-1};
+    }
+    acc+=seg;
+  }
+  return pts[pts.length-1]||{x:0,y:0,segIdx:0};
+}
+
+function getPathColor(){
+  // Color of destination node (last in path)
+  if(!pathAnim.nodes.length)return[128,180,255];
+  var lastId=pathAnim.nodes[pathAnim.nodes.length-1];
+  var ec=curMode===4?MONO:(nodeEffCol[lastId]||nodeMap[lastId].color||0x3a7ad0);
+  return[(ec>>16)&255,(ec>>8)&255,ec&255];
+}
+
 function drawLines(dt){
   lctx.putImageData(gridSnap,0,0);
 
-  // Build path animation set
-  var pathSet=new Set();var pathEdgeSet=new Set();var pathAlpha=0;
-  if(pathAnim.active){
+  // Update path animation
+  var pathPts=[];
+  var pathColor=[128,180,255];
+  if(pathAnim.active&&pathAnim.nodes.length>=2){
     pathAnim.timer+=dt;
-    if(pathAnim.timer>=PATH_INTERVAL){pathAnim.timer=0;pathAnim.phase=0;}
-    var elapsed=pathAnim.timer;
-    if(elapsed<PATH_DUR){
-      pathAnim.phase=elapsed/PATH_DUR;
-      var totalEdges=pathAnim.edges.length;
-      var animatedCount=Math.floor(pathAnim.phase*totalEdges);
-      for(var i=0;i<=animatedCount&&i<pathAnim.nodes.length;i++)pathSet.add(pathAnim.nodes[i]);
-      for(var i=0;i<animatedCount&&i<pathAnim.edges.length;i++)pathEdgeSet.add(pathAnim.edges[i].from+">"+pathAnim.edges[i].to);
-      pathAlpha=1;
+    // Loop every PATH_INTERVAL seconds
+    if(pathAnim.timer>=PATH_INTERVAL)pathAnim.timer=0;
+    pathPts=getPathScreenPoints();
+    pathColor=getPathColor();
+    // Advance dot — runs full path in ~1.2s, then waits, repeats
+    var cycleT=pathAnim.timer;
+    var moveDur=1.2,pauseDur=PATH_INTERVAL-1.2;
+    if(cycleT<moveDur){
+      pathDotProgress=cycleT/moveDur; // 0→1
+    } else {
+      pathDotProgress=1; // hold at end
     }
+    pathFlicker=Math.sin(performance.now()*0.018)*0.5+0.5; // fast flicker ~3hz
   }
 
-  // Draw edges
+  // Draw base edges first
   edgeData.forEach(e=>{
     var n=nodeMap[e.nid],p=nodeMap[e.pid];if(!n||!p)return;
     if(!visNodes.has(e.nid)||!visNodes.has(e.pid))return;
     var ec=curMode===4?MONO:(nodeEffCol[e.nid]||n.color);
-    var r=(ec>>16)&255,g=(ec>>8)&255,b=ec&255;
+    var r=(ec>>16)&255,g2=(ec>>8)&255,b=ec&255;
     var a2=proj(n.pos),b2=proj(p.pos);
     var rN=scrRad(n)*1.05,rP=scrRad(p)*1.05;
-    var sp=shorten(a2.x,a2.y,b2.x,b2.y,rN),ep=shorten(b2.x,b2.y,a2.x,a2.y,rP);
-
-    // Check if this edge is on animated path
-    var onPath=pathEdgeSet.has(e.pid+">"+e.nid);
-
+    var sp2=shorten(a2.x,a2.y,b2.x,b2.y,rN),ep2=shorten(b2.x,b2.y,a2.x,a2.y,rP);
     lctx.beginPath();
     if(e.lvl>=4)lctx.setLineDash([5,9]);else lctx.setLineDash([]);
-    lctx.moveTo(sp.x,sp.y);lctx.lineTo(ep.x,ep.y);
-
-    if(onPath){
-      // Bright animated path line
-      lctx.strokeStyle="rgba("+r+","+g+","+b+",0.95)";
-      lctx.lineWidth=3.5;
-      lctx.shadowColor="rgba("+r+","+g+","+b+",0.7)";
-      lctx.shadowBlur=8;
-    } else {
-      lctx.strokeStyle="rgba("+r+","+g+","+b+","+(curMode===4?0.28:0.5)+")";
-      lctx.lineWidth=1.8;
-      lctx.shadowBlur=0;
-    }
-    lctx.lineCap="round";lctx.stroke();
-    lctx.shadowBlur=0;lctx.setLineDash([]);
+    lctx.moveTo(sp2.x,sp2.y);lctx.lineTo(ep2.x,ep2.y);
+    lctx.strokeStyle="rgba("+r+","+g2+","+b+","+(curMode===4?0.26:0.48)+")";
+    lctx.lineWidth=1.8;lctx.lineCap="round";lctx.shadowBlur=0;lctx.stroke();
+    lctx.setLineDash([]);
   });
+
+  // Draw animated path ON TOP of base edges
+  if(pathPts.length>=2&&pathDotProgress>0){
+    var pr=pathColor[0],pg=pathColor[1],pb=pathColor[2];
+    var totalLen=getTotalPathLen(pathPts);
+    var reachedLen=pathDotProgress*totalLen;
+
+    // 1. Draw the "lit" portion of path (segments already passed by dot)
+    // Using a running dash effect — short bright dashes
+    var acc2=0;
+    for(var i=1;i<pathPts.length;i++){
+      var dx=pathPts[i].x-pathPts[i-1].x,dy=pathPts[i].y-pathPts[i-1].y;
+      var segLen=Math.sqrt(dx*dx+dy*dy);
+      if(acc2>=reachedLen)break;
+      var drawLen=Math.min(segLen,reachedLen-acc2);
+      var fx=pathPts[i-1].x+(dx/segLen)*drawLen;
+      var fy=pathPts[i-1].y+(dy/segLen)*drawLen;
+
+      // Flicker alpha
+      var fadeAlpha=0.55+pathFlicker*0.35;
+
+      // Draw dashed running line — dash pattern moves with dot
+      var dashOffset=((performance.now()*0.12)%24);
+      lctx.save();
+      lctx.setLineDash([10,14]);
+      lctx.lineDashOffset=-dashOffset;
+      lctx.beginPath();
+      lctx.moveTo(pathPts[i-1].x,pathPts[i-1].y);
+      lctx.lineTo(fx,fy);
+      lctx.strokeStyle="rgba("+pr+","+pg+","+pb+","+fadeAlpha+")";
+      lctx.lineWidth=2.8;lctx.lineCap="round";
+      lctx.shadowColor="rgba("+pr+","+pg+","+pb+",0.6)";
+      lctx.shadowBlur=7;
+      lctx.stroke();
+      // Second pass — bright thin center
+      lctx.setLineDash([]);
+      lctx.beginPath();
+      lctx.moveTo(pathPts[i-1].x,pathPts[i-1].y);
+      lctx.lineTo(fx,fy);
+      lctx.strokeStyle="rgba("+pr+","+pg+","+pb+","+(fadeAlpha*0.4)+")";
+      lctx.lineWidth=1;lctx.shadowBlur=0;lctx.stroke();
+      lctx.restore();
+      acc2+=segLen;
+    }
+
+    // 2. Draw moving dot at current position
+    var dotPos=getPosAlongPath(pathPts,pathDotProgress);
+    var dotAlpha=0.7+pathFlicker*0.3;
+    var dotR=4+pathFlicker*2; // pulsing size
+
+    // Outer glow
+    lctx.save();
+    var glowGrad=lctx.createRadialGradient(dotPos.x,dotPos.y,0,dotPos.x,dotPos.y,dotR*4);
+    glowGrad.addColorStop(0,"rgba("+pr+","+pg+","+pb+","+(dotAlpha*0.5)+")");
+    glowGrad.addColorStop(1,"rgba("+pr+","+pg+","+pb+",0)");
+    lctx.fillStyle=glowGrad;
+    lctx.beginPath();lctx.arc(dotPos.x,dotPos.y,dotR*4,0,Math.PI*2);lctx.fill();
+    // Inner dot
+    lctx.fillStyle="rgba("+pr+","+pg+","+pb+","+dotAlpha+")";
+    lctx.shadowColor="rgba("+pr+","+pg+","+pb+",0.9)";
+    lctx.shadowBlur=10;
+    lctx.beginPath();lctx.arc(dotPos.x,dotPos.y,dotR,0,Math.PI*2);lctx.fill();
+    // White center
+    lctx.shadowBlur=0;
+    lctx.fillStyle="rgba(255,255,255,"+(dotAlpha*0.85)+")";
+    lctx.beginPath();lctx.arc(dotPos.x,dotPos.y,dotR*0.42,0,Math.PI*2);lctx.fill();
+    lctx.restore();
+
+    // 3. Draw start/end node highlights
+    if(pathPts.length>0){
+      // Start node — small circle
+      var sp3=pathPts[0];
+      lctx.save();
+      lctx.strokeStyle="rgba("+pr+","+pg+","+pb+","+(0.5+pathFlicker*0.3)+")";
+      lctx.lineWidth=1.5;lctx.shadowColor="rgba("+pr+","+pg+","+pb+",0.5)";lctx.shadowBlur=6;
+      lctx.beginPath();lctx.arc(sp3.x,sp3.y,5,0,Math.PI*2);lctx.stroke();
+      lctx.restore();
+      // End node — pulsing ring
+      var ep3=pathPts[pathPts.length-1];
+      lctx.save();
+      var endR=6+pathFlicker*4;
+      lctx.strokeStyle="rgba("+pr+","+pg+","+pb+","+(0.6+pathFlicker*0.3)+")";
+      lctx.lineWidth=2;lctx.shadowColor="rgba("+pr+","+pg+","+pb+",0.8)";lctx.shadowBlur=12;
+      lctx.beginPath();lctx.arc(ep3.x,ep3.y,endR,0,Math.PI*2);lctx.stroke();
+      lctx.restore();
+    }
+  }
 }
 
 // ===== ANIMATE =====

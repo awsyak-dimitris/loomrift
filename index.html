@@ -69,6 +69,15 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 #fab{position:absolute;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#3a7ad0,#1a5ab0);border:none;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(58,122,208,0.4);font-size:22px;color:#fff;transition:all .18s}
 #fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(58,122,208,0.6)}
 
+/* AVATAR UPLOAD */
+#avatar-drop{width:100%;height:72px;border:1px dashed #3a3d50;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;background:#0e1018;position:relative;overflow:hidden}
+#avatar-drop:hover{border-color:#3a7ad0;background:#0e1220}
+#avatar-preview{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative}
+#avatar-preview img{width:68px;height:68px;object-fit:cover;border-radius:50%;border:2px solid #3a3d50}
+#avatar-ph{font-size:11px;color:#5a6070}
+#avatar-actions{margin-top:6px;display:flex;gap:6px}
+.av-clr{background:transparent;border:0.5px solid #3a3d50;border-radius:6px;padding:4px 10px;font-size:11px;color:#5a6070;cursor:pointer}
+.av-clr:hover{border-color:#E51000;color:#E51000}
 /* MODAL */
 #ov{position:absolute;inset:0;background:rgba(0,0,0,0.55);z-index:60;display:none;align-items:center;justify-content:center}
 #ov.open{display:flex}
@@ -147,6 +156,16 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
           <option value="red">🔴 Критично</option>
           <option value="gray">⚫ Холд</option>
         </select>
+      </div>
+      <div class="fl">
+        <label>Фото / Аватар <span style="color:#3a4050;font-weight:400">(необязательно, до 500×500)</span></label>
+        <div id="avatar-drop" onclick="document.getElementById('fi-img').click()">
+          <div id="avatar-preview"><span id="avatar-ph">📷 Нажмите или перетащите фото</span></div>
+          <input type="file" id="fi-img" accept="image/*" style="display:none">
+        </div>
+        <div id="avatar-actions" style="display:none">
+          <button type="button" class="av-clr" onclick="clearAvatar()">✕ Убрать фото</button>
+        </div>
       </div>
       <div class="fl" id="fi-pw"><label>Родитель</label><select id="fi-p"></select></div>
       <div class="mbs">
@@ -480,6 +499,7 @@ function openAdd(parentId){
     if(n.id===parentId)o.selected=true;sel.appendChild(o);
   });
   document.getElementById("mdl-ok").textContent="Создать";
+  clearAvatar();currentAvatarB64=null;
   document.getElementById("ov").classList.add("open");
   setTimeout(()=>document.getElementById("fi-n").focus(),80);
 }
@@ -492,19 +512,75 @@ function openEdit(id){
   document.getElementById("fi-c").value=ck;
   document.getElementById("fi-pw").style.display="none";
   document.getElementById("mdl-ok").textContent="Сохранить";
+  // Show existing avatar if any
+  var n2=nodeMap[id];
+  if(n2&&n2.avatar){setAvatarPreview(n2.avatar);}
+  else{clearAvatar();currentAvatarB64=null;}
   document.getElementById("ov").classList.add("open");
   setTimeout(()=>document.getElementById("fi-n").focus(),80);
 }
 function closeMdl(){document.getElementById("ov").classList.remove("open");document.getElementById("fi-pw").style.display="";}
+// Avatar state
+var currentAvatarB64=null;
+function clearAvatar(){
+  currentAvatarB64=null;
+  document.getElementById("avatar-preview").innerHTML='<span id="avatar-ph">📷 Нажмите или перетащите фото</span>';
+  document.getElementById("avatar-actions").style.display="none";
+}
+function setAvatarPreview(b64){
+  currentAvatarB64=b64;
+  document.getElementById("avatar-preview").innerHTML='<img src="'+b64+'" alt="avatar">';
+  document.getElementById("avatar-actions").style.display="flex";
+}
+// Crop image to square 500x500 and return base64
+function cropToSquare(file,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img2=new Image();
+    img2.onload=function(){
+      var size=Math.min(img2.width,img2.height,500);
+      var cv=document.createElement("canvas");cv.width=size;cv.height=size;
+      var ctx2=cv.getContext("2d");
+      // Draw centered crop
+      var sx=(img2.width-size)/2,sy=(img2.height-size)/2;
+      ctx2.drawImage(img2,sx,sy,size,size,0,0,size,size);
+      cb(cv.toDataURL("image/jpeg",0.88));
+    };
+    img2.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+// File input change
+document.addEventListener("DOMContentLoaded",function(){
+  var fi=document.getElementById("fi-img");
+  if(fi)fi.addEventListener("change",function(e){
+    if(e.target.files[0])cropToSquare(e.target.files[0],setAvatarPreview);
+  });
+  // Drag and drop
+  var drop=document.getElementById("avatar-drop");
+  if(drop){
+    drop.addEventListener("dragover",function(e){e.preventDefault();drop.style.borderColor="#3a7ad0";});
+    drop.addEventListener("dragleave",function(){drop.style.borderColor="#3a3d50";});
+    drop.addEventListener("drop",function(e){
+      e.preventDefault();drop.style.borderColor="#3a3d50";
+      var f=e.dataTransfer.files[0];
+      if(f&&f.type.startsWith("image/"))cropToSquare(f,setAvatarPreview);
+    });
+  }
+});
+
 function submitMdl(){
   var name=document.getElementById("fi-n").value.trim();if(!name)return;
   var role=document.getElementById("fi-r").value.trim()||"Member";
   var shape=document.getElementById("fi-s").value;
   var colKey=document.getElementById("fi-c").value;
   var col={green:C.green,yellow:C.yellow,red:C.red,gray:C.gray}[colKey]||C.gray;
+  var avatar=currentAvatarB64||null;
   if(mdlMode==="edit"){
     var n=nodeMap[mdlTargetId];
-    n.label=name;n.role=role;n.shape=shape;n.color=col;nodeEffCol[n.id]=col;
+    n.label=name;n.role=role;n.shape=shape;n.color=col;
+    if(avatar!==undefined)n.avatar=avatar;
+    nodeEffCol[n.id]=col;
     if(sprO[n.id]){sprO[n.id].material.map=mkTex(n,false);sprO[n.id].material.needsUpdate=true;}
     updLbl(n.id,0xe8edf8,col);
   } else {
@@ -513,8 +589,8 @@ function submitMdl(){
     var lvl=par.lvl+1,sz2=lvl<=2?18:lvl===3?14:lvl===4?11:9,grp=par.group||"mixa";
     var newN=mkN(uid(),name,role,shape,col,sz2,grp);
     newN.lvl=lvl;newN.parentId=par.id;
+    if(avatar)newN.avatar=avatar;
     addC(par,newN);
-    // Update status map
     ST_MAP[newN.id]="green";
     nodeEffCol[newN.id]=col;
     mkSprite(newN);
@@ -531,14 +607,43 @@ function submitMdl(){
 var imgC={};
 function loadImg(url,cb){if(imgC[url]!==undefined){cb(imgC[url]);return;}var img2=new Image();img2.onload=()=>{imgC[url]=img2;cb(img2);};img2.onerror=()=>{imgC[url]=null;cb(null);};img2.src=url;}
 
+// Cache for avatar images
+var avImgC={};
 function mkTex(n,isAct,colOvr){
   var sz2=128,cv=document.createElement("canvas");cv.width=sz2;cv.height=sz2;
   var ctx2=cv.getContext("2d");ctx2.clearRect(0,0,sz2,sz2);
+  var col=colOvr!==undefined?colOvr:(nodeEffCol[n.id]||n.color);
+  var r=(col>>16)&255,g=(col>>8)&255,b=col&255;
+
+  // If node has avatar photo — draw it as circle
+  if(n.avatar){
+    if(!avImgC[n.id]||avImgC[n.id].src!==n.avatar){
+      // Build image synchronously from cached data
+      var avImg=new Image();avImg.src=n.avatar;avImgC[n.id]=avImg;
+    }
+    var avI=avImgC[n.id];
+    // Draw circle clip
+    ctx2.save();ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-2,0,Math.PI*2);ctx2.clip();
+    if(avI&&avI.complete&&avI.naturalWidth){
+      ctx2.drawImage(avI,0,0,sz2,sz2);
+    } else {
+      // Not loaded yet — draw color fill and reload on next frame
+      ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.fillRect(0,0,sz2,sz2);
+      avI.onload=function(){if(sprO[n.id]){sprO[n.id].material.map=mkTex(n,isAct,colOvr);sprO[n.id].material.needsUpdate=true;}};
+    }
+    ctx2.restore();
+    // Colored ring border
+    ctx2.strokeStyle="rgba("+r+","+g+","+b+",1)";ctx2.lineWidth=sz2*0.075;
+    ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-sz2*0.04,0,Math.PI*2);ctx2.stroke();
+    // Tint overlay if active
+    if(isAct){ctx2.globalCompositeOperation="overlay";ctx2.fillStyle="rgba("+r+","+g+","+b+",0.25)";ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2,0,Math.PI*2);ctx2.fill();ctx2.globalCompositeOperation="source-over";}
+    return new THREE.CanvasTexture(cv);
+  }
+
+  // No avatar — use SVG icon
   var sk=n.shape==="hexagon"?"triangle":(n.shape==="main"?"main":n.shape);
   if(!ICONS[sk])sk="circle";
   var iurl=ICONS[sk][isAct?"a":"d"];
-  var col=colOvr!==undefined?colOvr:(nodeEffCol[n.id]||n.color);
-  var r=(col>>16)&255,g=(col>>8)&255,b=col&255;
   var img2=imgC[iurl];
   if(img2){ctx2.drawImage(img2,0,0,sz2,sz2);ctx2.globalCompositeOperation="source-in";ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.fillRect(0,0,sz2,sz2);ctx2.globalCompositeOperation="source-over";}
   else{ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-4,0,Math.PI*2);ctx2.fill();}

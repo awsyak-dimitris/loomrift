@@ -68,6 +68,14 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 /* FAB */
 #fab{position:absolute;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#3a7ad0,#1a5ab0);border:none;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(58,122,208,0.4);font-size:22px;color:#fff;transition:all .18s}
 #fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(58,122,208,0.6)}
+/* RESET BUTTON */
+#reset-btn{position:absolute;top:56px;right:16px;width:36px;height:36px;border-radius:50%;background:#1e2030;border:0.5px solid #3a3d50;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.4);transition:all .18s;padding:0}
+#reset-btn:hover{background:#2a1a1a;border-color:#E51000;box-shadow:0 4px 18px rgba(229,16,0,0.3);transform:rotate(30deg)}
+#reset-btn img{width:18px;height:18px;opacity:0.6}
+#reset-btn:hover img{opacity:1}
+/* SAVE INDICATOR */
+#save-ind{position:absolute;top:58px;right:60px;font-size:10px;color:#3a5040;pointer-events:none;z-index:24;transition:opacity .5s;opacity:0}
+#save-ind.show{opacity:1}
 
 /* AVATAR UPLOAD */
 #avatar-drop{width:100%;height:72px;border:1px dashed #3a3d50;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;background:#0e1018;position:relative;overflow:hidden}
@@ -135,6 +143,10 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
   </div>
 
   <button id="fab" onclick="openAdd(null)" title="Новый узел">+</button>
+  <div id="save-ind">● сохранено</div>
+  <button id="reset-btn" onclick="resetAll()" title="Сбросить всё">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48IS0tIFVwbG9hZGVkIHRvOiBTVkcgUmVwbywgd3d3LnN2Z3JlcG8uY29tLCBHZW5lcmF0b3I6IFNWRyBSZXBvIE1peGVyIFRvb2xzIC0tPgo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMjAsOCBDMTguNTk3NDAzNyw1LjA0MDMxMTcxIDE1LjUzNjk3MiwzIDEyLDMgQzcuMDI5NDM3MjUsMyAzLDcuMDI5NDM3MjUgMywxMiBDMywxNi45NzA1NjI3IDcuMDI5NDM3MjUsMjEgMTIsMjEgTDEyLDIxIEMxNi45NzA1NjI3LDIxIDIxLDE2Ljk3MDU2MjcgMjEsMTIgTTIxLDMgTDIxLDkgTDE1LDkiLz4KPC9zdmc+" alt="reset">
+  </button>
 
   <div id="ov">
     <div id="mdl">
@@ -600,7 +612,7 @@ function submitMdl(){
     }
     calcPos();rebuildEdges();
   }
-  applyMode(null);buildSB();closeMdl();
+  applyMode(null);buildSB();scheduleSave();closeMdl();
 }
 
 // ===== 3D SPRITES =====
@@ -732,13 +744,120 @@ function handleClick(id){
   buildSB();
 }
 
+// ===== LOCALSTORAGE PERSISTENCE =====
+var STORE_KEY="loomrift_v3";
+var saveTimer=null;
+
+function serializeTree(){
+  // Serialize all nodes
+  var nodes={};
+  Object.values(nodeMap).forEach(function(n){
+    nodes[n.id]={
+      id:n.id,label:n.label,role:n.role,shape:n.shape,
+      color:n.color,sz:n.sz,group:n.group,lvl:n.lvl,
+      parentId:n.parentId,
+      childIds:n.children.map(function(c){return c.id;}),
+      avatar:n.avatar||null
+    };
+  });
+  return {
+    nodes:nodes,
+    expanded:Array.from(expNodes),
+    visible:Array.from(visNodes),
+    mode:curMode,
+    is2D:is2D,
+    uidC:uidC
+  };
+}
+
+function deserializeTree(data){
+  // Restore nodes
+  nodeMap={};
+  // First pass: create all nodes
+  Object.values(data.nodes).forEach(function(nd){
+    var n=mkN(nd.id,nd.label,nd.role,nd.shape,nd.color,nd.sz,nd.group);
+    n.lvl=nd.lvl;n.parentId=nd.parentId;n.avatar=nd.avatar||null;
+    nodeMap[n.id]=n;
+    nodeEffCol[n.id]=nd.color;
+    if(nd.id==="mixa")n.opacity=1;
+  });
+  // Second pass: restore children arrays
+  Object.values(data.nodes).forEach(function(nd){
+    var n=nodeMap[nd.id];
+    n.children=nd.childIds.map(function(cid){return nodeMap[cid];}).filter(Boolean);
+  });
+  // Restore state
+  expNodes=new Set(data.expanded||[]);
+  visNodes=new Set(data.visible||["mixa"]);
+  curMode=data.mode||1;
+  is2D=data.is2D||false;
+  if(data.uidC)uidC=data.uidC;
+  // Mark visible nodes opacity
+  Object.values(nodeMap).forEach(function(n){
+    n.opacity=visNodes.has(n.id)?1:0;
+  });
+}
+
+function saveState(){
+  try{
+    var data=serializeTree();
+    localStorage.setItem(STORE_KEY,JSON.stringify(data));
+    // Show save indicator
+    var ind=document.getElementById("save-ind");
+    if(ind){ind.classList.add("show");clearTimeout(saveTimer);saveTimer=setTimeout(function(){ind.classList.remove("show");},1800);}
+  }catch(e){console.warn("Save failed:",e);}
+}
+
+function loadState(){
+  try{
+    var raw=localStorage.getItem(STORE_KEY);
+    if(!raw)return false;
+    var data=JSON.parse(raw);
+    if(!data||!data.nodes)return false;
+    deserializeTree(data);
+    return true;
+  }catch(e){console.warn("Load failed:",e);return false;}
+}
+
+function resetAll(){
+  if(!confirm("Сбросить всё? Вся структура вернётся к начальному состоянию."))return;
+  localStorage.removeItem(STORE_KEY);
+  location.reload();
+}
+
+// Auto-save on any state change — debounced 800ms
+var _saveDebounce=null;
+function scheduleSave(){
+  clearTimeout(_saveDebounce);
+  _saveDebounce=setTimeout(saveState,800);
+}
+
+// Patch key functions to trigger save
+var _origToggle=toggleNode;
+toggleNode=function(id){_origToggle(id);scheduleSave();};
+var _origDelNode=delNode;
+delNode=function(id){_origDelNode(id);scheduleSave();};
+
 // ===== PRELOAD & INIT =====
 var toLoad=[...new Set(Object.values(ICONS).flatMap(ic=>[ic.d,ic.a]))];
 var loaded=0;
 toLoad.forEach(url=>{var img2=new Image();img2.onload=img2.onerror=()=>{imgC[url]=img2.complete&&img2.naturalWidth?img2:null;loaded++;if(loaded===toLoad.length)init();};img2.src=url;});
 
 function init(){
+  var hadSave=loadState();
+
   Object.values(nodeMap).forEach(mkSprite);
+
+  if(hadSave){
+    // Restore UI state
+    document.querySelectorAll(".tbtn").forEach((b,i)=>b.classList.toggle("active",i+1===curMode));
+    if(is2D){
+      document.getElementById("viewBtn").textContent="🔮 3D";
+      document.getElementById("viewBtn").classList.add("active");
+      tSph.theta=0;tSph.phi=Math.PI/2;tSph.r=580;
+    }
+  }
+
   calcPos();rebuildEdges();
   scene.add(new THREE.AmbientLight(0xffffff,1));
   applyMode(null);buildSB();updateHint();animate();

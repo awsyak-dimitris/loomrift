@@ -533,7 +533,7 @@ function submitMdl(){
 }
 
 // ===== LOCALSTORAGE =====
-var SKEY="loomrift_v4",_svT=null,_svD=null;
+var SKEY="loomrift_v5",_svT=null,_svD=null;
 function scheduleSave(){clearTimeout(_svT);_svT=setTimeout(saveState,800);}
 function saveState(){
   try{
@@ -547,13 +547,35 @@ function loadState(){
   try{
     var raw=localStorage.getItem(SKEY);if(!raw)return false;
     var data=JSON.parse(raw);if(!data||!data.nodes)return false;
-    nodeMap={};
-    Object.values(data.nodes).forEach(function(nd){var n=mkN(nd.id,nd.label,nd.role,nd.shape,nd.color,nd.sz,nd.group);n.lvl=nd.lvl;n.parentId=nd.parentId;n.avatar=nd.avatar||null;n.alert=nd.alert||null;nodeMap[n.id]=n;effCol[n.id]=nd.color;if(nd.id==="mixa")n.opacity=1;});
-    Object.values(data.nodes).forEach(function(nd){var n=nodeMap[nd.id];n.children=(nd.childIds||[]).map(function(cid){return nodeMap[cid];}).filter(Boolean);});
-    expN=new Set(data.expanded||[]);visN=new Set(data.visible||["mixa"]);curMode=data.mode||1;is2D=data.is2D||false;if(data.uidC)uidC=data.uidC;
+    if(!data.nodes["mixa"]){console.warn("Bad save: no mixa");return false;}
+    // Rebuild nodeMap from saved data
+    var newMap={};
+    Object.values(data.nodes).forEach(function(nd){
+      var n=mkN(nd.id,nd.label,nd.role,nd.shape||"circle",nd.color||0x554F56,nd.sz||11,nd.group||"mixa");
+      n.lvl=nd.lvl||1;n.parentId=nd.parentId||null;n.avatar=nd.avatar||null;n.alert=nd.alert||null;
+      newMap[n.id]=n;effCol[n.id]=nd.color||0x554F56;
+    });
+    // Restore children
+    Object.values(data.nodes).forEach(function(nd){
+      var n=newMap[nd.id];if(!n)return;
+      n.children=(nd.childIds||[]).map(function(cid){return newMap[cid];}).filter(Boolean);
+    });
+    // Validate: mixa must exist and have children array
+    if(!newMap["mixa"]){return false;}
+    nodeMap=newMap;
+    expN=new Set(data.expanded||[]);
+    visN=new Set(data.visible||["mixa"]);
+    // Always ensure mixa is visible
+    visN.add("mixa");nodeMap["mixa"].opacity=1;
+    curMode=data.mode||1;is2D=data.is2D||false;if(data.uidC)uidC=data.uidC;
     Object.values(nodeMap).forEach(function(n){n.opacity=visN.has(n.id)?1:0;});
+    nodeMap["mixa"].opacity=1;
     return true;
-  }catch(e){console.warn("Load error",e);return false;}
+  }catch(e){console.warn("Load error:",e);
+    // Clear bad save
+    try{localStorage.removeItem(SKEY);}catch(e2){}
+    return false;
+  }
 }
 function resetAll(){
   if(!window.confirm("Сбросить всё? Структура вернётся к начальному состоянию."))return;
@@ -653,7 +675,11 @@ var loaded=0;
 toLoad.forEach(function(url){var img2=new Image();img2.onload=img2.onerror=function(){imgC[url]=img2.complete&&img2.naturalWidth?img2:null;loaded++;if(loaded===toLoad.length)init();};img2.src=url;});
 
 function init(){
-  var hadSave=loadState();
+  var hadSave=false;
+  try{ hadSave=loadState(); }catch(e){ console.warn("loadState failed:",e); hadSave=false; }
+  // Ensure mixa always exists and is visible
+  if(!nodeMap["mixa"]){ console.warn("mixa missing, using default"); hadSave=false; }
+  else { visN.add("mixa"); nodeMap["mixa"].opacity=1; }
   Object.values(nodeMap).forEach(mkSprite);
   if(hadSave){document.querySelectorAll(".tbtn").forEach(function(b,i){b.classList.toggle("active",i+1===curMode);});if(is2D){document.getElementById("viewBtn").textContent="🔮 3D";document.getElementById("viewBtn").classList.add("active");tSph.theta=0;tSph.phi=Math.PI/2;tSph.r=580;}}
   calcPos();rebuildEdges();scene.add(new THREE.AmbientLight(0xffffff,1));

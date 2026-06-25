@@ -68,6 +68,25 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 /* FAB */
 #fab{position:absolute;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#3a7ad0,#1a5ab0);border:none;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(58,122,208,0.4);font-size:22px;color:#fff;transition:all .18s}
 #fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(58,122,208,0.6)}
+/* ALERT BADGES — drawn on canvas overlay, but tooltip via HTML */
+#alert-tooltip{position:absolute;display:none;z-index:40;pointer-events:none;
+  background:#1e2030;border:0.5px solid #3a3d50;border-radius:9px;
+  padding:7px 11px;font-size:11px;color:#dde2f0;
+  box-shadow:0 4px 18px rgba(0,0,0,0.5);max-width:200px;line-height:1.4}
+#alert-tooltip .at-sym{font-size:14px;font-weight:700;margin-right:5px}
+#alert-tooltip .at-sym.exc{color:#EFC44E}
+#alert-tooltip .at-sym.que{color:#3a7ad0}
+#alert-tooltip .at-sym.ast{color:#80B932}
+/* Alert marker picker in ctx menu */
+.ci-alert-row{display:flex;gap:6px;padding:6px 11px;align-items:center}
+.al-btn{width:26px;height:26px;border-radius:6px;border:0.5px solid #3a3d50;
+  background:#12141a;font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s}
+.al-btn:hover{transform:scale(1.12)}
+.al-btn.exc{color:#EFC44E;border-color:#5a4a10}
+.al-btn.que{color:#3a7ad0;border-color:#1a3a5a}
+.al-btn.ast{color:#80B932;border-color:#2a4a1a}
+.al-btn.del-al{color:#E51000;border-color:#5a1a1a;font-size:11px}
 /* RESET BUTTON */
 #reset-btn{position:absolute;top:56px;right:16px;width:36px;height:36px;border-radius:50%;background:#1e2030;border:0.5px solid #3a3d50;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.4);transition:all .18s;padding:0}
 #reset-btn:hover{background:#2a1a1a;border-color:#E51000;box-shadow:0 4px 18px rgba(229,16,0,0.3);transform:rotate(30deg)}
@@ -132,12 +151,21 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
   <div id="hint">ЛКМ = вращение · колесо = зум · Пробел+ЛКМ / ММБ = панорама · ПКМ = меню</div>
   <div id="tooltip"></div>
 
+  <div id="alert-tooltip"><span class="at-sym" id="at-sym"></span><span id="at-txt"></span></div>
   <div id="ctx">
     <div class="ci-head" id="ctx-nm"></div>
     <div class="ci-sep"></div>
     <div class="ci" id="ci-toggle">↕ Раскрыть / схлопнуть</div>
     <div class="ci" id="ci-edit">✏️ Редактировать</div>
     <div class="ci" id="ci-add">➕ Добавить дочерний</div>
+    <div class="ci-sep"></div>
+    <div class="ci-head" style="padding:4px 11px 2px;font-size:10px;color:#5a6070">Маркер алерта</div>
+    <div class="ci-alert-row">
+      <button class="al-btn exc" id="ci-al-exc" title="Важно (!)">!</button>
+      <button class="al-btn que" id="ci-al-que" title="Вопрос (?)">?</button>
+      <button class="al-btn ast" id="ci-al-ast" title="Заметка (*)">★</button>
+      <button class="al-btn del-al" id="ci-al-del" title="Убрать маркер">✕</button>
+    </div>
     <div class="ci-sep"></div>
     <div class="ci del" id="ci-del">🗑 Удалить</div>
   </div>
@@ -246,7 +274,8 @@ var nodeMap={},uidC=1000;
 function uid(){return"n"+(uidC++);}
 function mkN(id,lbl,role,shape,col,sz,grp){
   return{id,label:lbl,role,shape,color:col,sz,group:grp,parentId:null,children:[],lvl:0,
-    pos:new THREE.Vector3(0,0,0),targetPos:new THREE.Vector3(0,0,0),opacity:0,birthTime:-999};
+    pos:new THREE.Vector3(0,0,0),targetPos:new THREE.Vector3(0,0,0),opacity:0,birthTime:-999,
+    alert:null};  // alert: {type:'exc'|'que'|'ast', text:''}
 }
 function addC(par,child){par.children.push(child);child.parentId=par.id;nodeMap[child.id]=child;}
 function setLvl(n,l){n.lvl=l;n.children.forEach(c=>setLvl(c,l+1));}
@@ -472,6 +501,12 @@ function showCtx(id,x,y){
   bind("ci-edit",function(){openEdit(id);});
   bind("ci-add",function(){openAdd(id);});
   bind("ci-del",function(){delNode(id);});
+  bindAlertBtns(id);
+  // Highlight active alert type
+  ["exc","que","ast"].forEach(function(t){
+    var el=document.getElementById("ci-al-"+t);
+    if(el)el.style.boxShadow=(n.alert&&n.alert.type===t)?"0 0 0 1.5px "+ALERT_TYPES[t].color:"none";
+  });
   m.style.display="block";
   var mx=Math.min(x,W-170),my=Math.min(y,window.innerHeight-200);
   m.style.left=mx+"px";m.style.top=my+"px";
@@ -479,6 +514,69 @@ function showCtx(id,x,y){
 function hideCtx(){document.getElementById("ctx").style.display="none";ctxId=null;}
 document.addEventListener("mousedown",function(e){if(!e.target.closest("#ctx"))hideCtx();});
 function ca(act){}
+
+// ===== ALERT MARKERS =====
+var ALERT_TYPES={
+  exc:{sym:"!",label:"Важно",color:"#EFC44E",bg:"rgba(50,40,10,0.95)"},
+  que:{sym:"?",label:"Вопрос",color:"#3a7ad0",bg:"rgba(10,25,50,0.95)"},
+  ast:{sym:"★",label:"Заметка",color:"#80B932",bg:"rgba(15,40,10,0.95)"},
+};
+
+function setAlert(id,type,text){
+  var n=nodeMap[id];if(!n)return;
+  if(type===null){n.alert=null;}
+  else{
+    // If same type, prompt for text
+    var existing=(n.alert&&n.alert.type===type)?n.alert.text:"";
+    var txt=prompt((ALERT_TYPES[type]||{label:"Маркер"}).label+' — текст подсказки (можно пустой):',existing||"");
+    if(txt===null)return; // cancelled
+    n.alert={type:type,text:txt.trim()};
+  }
+  scheduleSave();
+}
+
+// Alert tooltip show/hide
+var atTip=document.getElementById("alert-tooltip");
+var atVisible=false;
+function showAlertTip(n,x,y){
+  if(!n.alert)return;
+  var t=ALERT_TYPES[n.alert.type];if(!t)return;
+  var sym=document.getElementById("at-sym");
+  var txt=document.getElementById("at-txt");
+  sym.textContent=t.sym;sym.className="at-sym "+n.alert.type;
+  txt.textContent=n.alert.text||(t.label);
+  atTip.style.background=t.bg;
+  atTip.style.borderColor=t.color+"55";
+  atTip.style.display="block";
+  atTip.style.left=(x+14)+"px";
+  atTip.style.top=(y-40)+"px";
+  atVisible=true;
+}
+function hideAlertTip(){atTip.style.display="none";atVisible=false;}
+
+// Bind alert buttons in ctx menu inside showCtx (call after bind block)
+function bindAlertBtns(id){
+  var types=["exc","que","ast"];
+  types.forEach(function(t){
+    var el=document.getElementById("ci-al-"+t);
+    if(!el)return;
+    var newEl=el.cloneNode(true);el.parentNode.replaceChild(newEl,el);
+    newEl.addEventListener("click",function(e){
+      e.stopPropagation();
+      document.getElementById("ctx").style.display="none";ctxId=null;
+      setAlert(id,t,"");
+    });
+  });
+  var delEl=document.getElementById("ci-al-del");
+  if(delEl){
+    var newDel=delEl.cloneNode(true);delEl.parentNode.replaceChild(newDel,delEl);
+    newDel.addEventListener("click",function(e){
+      e.stopPropagation();
+      document.getElementById("ctx").style.display="none";ctxId=null;
+      setAlert(id,null,null);
+    });
+  }
+}
 
 function delNode(id){
   if(id==="mixa")return;
@@ -757,7 +855,8 @@ function serializeTree(){
       color:n.color,sz:n.sz,group:n.group,lvl:n.lvl,
       parentId:n.parentId,
       childIds:n.children.map(function(c){return c.id;}),
-      avatar:n.avatar||null
+      avatar:n.avatar||null,
+      alert:n.alert||null
     };
   });
   return {
@@ -882,6 +981,15 @@ window.addEventListener("mousemove",e=>{
   var hit=ray.intersectObjects(Object.values(hitO).filter(m=>visNodes.has(m.userData.id)));
   var newH=hit.length?hit[0].object.userData.id:null;
   if(newH!==hovId){if(hovId&&hovId!==selId)rfx(hovId,false);hovId=newH;if(hovId&&hovId!==selId)rfx(hovId,true);}
+  // Check if hovering over an alert badge
+  if(newH&&!isPan){
+    var nAlrt=nodeMap[newH];
+    if(nAlrt&&nAlrt.alert&&e.altKey){
+      showAlertTip(nAlrt,e.clientX,e.clientY);
+    } else {
+      hideAlertTip();
+    }
+  } else {hideAlertTip();}
   if(newH&&!isPan){var n=nodeMap[newH];tip.style.display="block";tip.style.left=(e.clientX+14)+"px";tip.style.top=(e.clientY+20)+"px";tip.innerHTML="<div style='font-weight:500;font-size:12px;color:#dde2f0'>"+n.label+"</div><div style='color:#5a6070;font-size:10px;margin-top:2px'>"+n.role+"</div>"+(n.children.length?"<div style='color:#8ab8e8;font-size:10px;margin-top:3px'>"+(expNodes.has(n.id)?"▲ схлопнуть":"▼ раскрыть")+"</div>":"")+"<div style='color:#3a4050;font-size:9px;margin-top:2px'>ПКМ = меню</div>";canvas.style.cursor="pointer";}
   else if(!isPan&&!isDrag){tip.style.display="none";canvas.style.cursor=spDown||is2D?"move":"grab";}
 });
@@ -1072,7 +1180,40 @@ function drawLines(dt){
       lctx.restore();
     }
   }
-}
+
+  // ===== DRAW ALERT BADGES =====
+  var ALT_COLORS={exc:"#EFC44E",que:"#3a7ad0",ast:"#80B932"};
+  var ALT_BG={exc:"rgba(40,32,8,0.92)",que:"rgba(8,20,42,0.92)",ast:"rgba(12,32,8,0.92)"};
+  Object.values(nodeMap).forEach(function(n){
+    if(!n.alert||!visNodes.has(n.id))return;
+    var col=ALT_COLORS[n.alert.type]||"#888";
+    var sym={exc:"!",que:"?",ast:"★"}[n.alert.type]||"*";
+    var np=proj(n.pos);
+    var bsz=n.sz*0.38; // badge radius in screen px
+    var bx=np.x+scrRad(n)*0.78,by=np.y-scrRad(n)*0.78;
+    // Pulse badge every 2s
+    var pulse=0.82+Math.sin(performance.now()*0.004)*0.18;
+    lctx.save();
+    // Glow
+    var glw=lctx.createRadialGradient(bx,by,0,bx,by,bsz*2.5);
+    glw.addColorStop(0,"rgba("+hexToRgbStr(col)+","+(0.35*pulse)+")");
+    glw.addColorStop(1,"rgba("+hexToRgbStr(col)+",0)");
+    lctx.fillStyle=glw;lctx.beginPath();lctx.arc(bx,by,bsz*2.5,0,Math.PI*2);lctx.fill();
+    // Badge bg
+    lctx.fillStyle=ALT_BG[n.alert.type]||"rgba(20,22,30,0.92)";
+    lctx.shadowColor=col;lctx.shadowBlur=6*pulse;
+    lctx.beginPath();lctx.arc(bx,by,bsz,0,Math.PI*2);lctx.fill();
+    // Badge border
+    lctx.strokeStyle=col;lctx.lineWidth=1.2;lctx.shadowBlur=0;
+    lctx.beginPath();lctx.arc(bx,by,bsz,0,Math.PI*2);lctx.stroke();
+    // Symbol
+    lctx.fillStyle=col;
+    lctx.font="bold "+Math.round(bsz*1.1)+"px sans-serif";
+    lctx.textAlign="center";lctx.textBaseline="middle";
+    lctx.fillText(sym,bx,by+1);
+    lctx.restore();
+  });
+}}
 
 // ===== ANIMATE =====
 function animate(){

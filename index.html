@@ -118,11 +118,11 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
   <div id="ctx">
     <div class="ci-head" id="ctx-nm"></div>
     <div class="ci-sep"></div>
-    <div class="ci" onmousedown="event.stopPropagation()" onclick="ca('toggle')">↕ Раскрыть / схлопнуть</div>
-    <div class="ci" onmousedown="event.stopPropagation()" onclick="ca('edit')">✏️ Редактировать</div>
-    <div class="ci" onmousedown="event.stopPropagation()" onclick="ca('add')">➕ Добавить дочерний</div>
+    <div class="ci" id="ci-toggle">↕ Раскрыть / схлопнуть</div>
+    <div class="ci" id="ci-edit">✏️ Редактировать</div>
+    <div class="ci" id="ci-add">➕ Добавить дочерний</div>
     <div class="ci-sep"></div>
-    <div class="ci del" onmousedown="event.stopPropagation()" onclick="ca('del')">🗑 Удалить</div>
+    <div class="ci del" id="ci-del">🗑 Удалить</div>
   </div>
 
   <button id="fab" onclick="openAdd(null)" title="Новый узел">+</button>
@@ -422,24 +422,32 @@ function buildPath(id){
 // ===== CONTEXT MENU =====
 var ctxId=null;
 function showCtx(id,x,y){
-  ctxId=id;var n=nodeMap[id];
+  ctxId=id;
+  var n=nodeMap[id];
   document.getElementById("ctx-nm").textContent=n.label+" · "+n.role;
-  var m=document.getElementById("ctx");m.style.display="block";
-  var mx=Math.min(x,W-165),my=Math.min(y,window.innerHeight-185);
+  var m=document.getElementById("ctx");
+  // Attach fresh click handlers each time
+  function bind(elId,fn){
+    var el=document.getElementById(elId);
+    var newEl=el.cloneNode(true);
+    el.parentNode.replaceChild(newEl,el);
+    newEl.addEventListener("click",function(e){
+      e.stopPropagation();
+      m.style.display="none";ctxId=null;
+      fn();
+    });
+  }
+  bind("ci-toggle",function(){toggleNode(id);applyMode(curMode===2?id:null);buildSB();});
+  bind("ci-edit",function(){openEdit(id);});
+  bind("ci-add",function(){openAdd(id);});
+  bind("ci-del",function(){delNode(id);});
+  m.style.display="block";
+  var mx=Math.min(x,W-170),my=Math.min(y,window.innerHeight-200);
   m.style.left=mx+"px";m.style.top=my+"px";
 }
 function hideCtx(){document.getElementById("ctx").style.display="none";ctxId=null;}
-document.addEventListener("mousedown",e=>{
-  if(!e.target.closest("#ctx")){hideCtx();}
-});
-
-function ca(act){
-  hideCtx();if(!ctxId)return;
-  if(act==="toggle"){toggleNode(ctxId);applyMode(curMode===2?ctxId:null);}
-  else if(act==="edit")openEdit(ctxId);
-  else if(act==="add")openAdd(ctxId);
-  else if(act==="del"){var n2=nodeMap[ctxId];if(n2&&confirm("Удалить узел \""+n2.label+"\" и все дочерние?"))delNode(ctxId);}
-}
+document.addEventListener("mousedown",function(e){if(!e.target.closest("#ctx"))hideCtx();});
+function ca(act){}
 
 function delNode(id){
   if(id==="mixa")return;

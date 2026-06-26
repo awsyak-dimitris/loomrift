@@ -1133,6 +1133,14 @@ function scrRad(n){var e3=n.pos.clone().add(new THREE.Vector3(n.sz*.5,0,0));var 
 function shorten(ax,ay,bx,by,amt){var dx=bx-ax,dy=by-ay,d=Math.sqrt(dx*dx+dy*dy);if(d<amt*2)return{x:ax,y:ay};var t=amt/d;return{x:ax+dx*t,y:ay+dy*t};}
 
 // ===== DRAW LINES + PATH ANIM =====
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
 function drawLines(dt){
   lctx.putImageData(gridSnap,0,0);
 
@@ -1215,66 +1223,103 @@ function drawLines(dt){
     lctx.fillText(t.sym,bx,by+1);lctx.restore();
   });
 
-  // ===== DRAW LABELS ON CANVAS (always above node, screen-space) =====
+  // ===== DRAW LABELS ON CANVAS =====
   var alertFilterActive = alertFilter !== null;
+
+  // Collect visible nodes with screen positions
+  var labelNodes = [];
   Object.values(nodeMap).forEach(function(n){
     if(!visN.has(n.id)) return;
-    // Opacity fade for alert filter
+    var np = proj(n.pos);
+    // Skip nodes outside screen (with margin)
+    if(np.x < -200 || np.x > W+200 || np.y < -100 || np.y > H+100) return;
+    var sr = scrRad(n);
+    // Skip if too small to read (far away)
+    if(sr < 2) return;
+
     var filterAlpha = 1.0;
     if(alertFilterActive){
-      filterAlpha = (n.alert && n.alert.type===alertFilter) ? 1.0 : 0.0;
+      filterAlpha = (n.alert && n.alert.type===alertFilter) ? 1.0 : 0.12;
     }
-    if(filterAlpha === 0) return;
 
-    var np = proj(n.pos);
-    var sr = scrRad(n);
-    // Label goes above: np.y - sr - gap
-    var gap = Math.max(sr * 0.35, 6);
-    var ty = np.y - sr - gap;
-    var tx = np.x;
-
-    // Compute spawn alpha
+    // Spawn fade
     var spawnA = 1;
     if(n.birthTime > 0){
       var age = lastT - n.birthTime;
-      if(age < 0) spawnA = 0;
-      else if(age < 0.4) spawnA = Math.max(0, Math.min(1, (age/0.4)));
+      if(age < 0) return;
+      if(age < 0.4) spawnA = age / 0.4;
     }
     var alpha = spawnA * filterAlpha;
-    if(alpha < 0.01) return;
+    if(alpha < 0.02) return;
 
-    // Node color for label
+    // Font size: proportional to screen radius, clamped
+    // sr is the screen radius in pixels
+    var nameSize = Math.max(10, Math.min(16, sr * 1.05));
+    var roleSize = Math.max(8,  Math.min(12, sr * 0.72));
+
+    // Fade out text when node is tiny (zoomed out)
+    // Start fading at sr=8, fully invisible at sr=4
+    var srAlpha = Math.max(0, Math.min(1, (sr - 4) / 5));
+    alpha *= srAlpha;
+    if(alpha < 0.02) return;
+
+    labelNodes.push({n:n, np:np, sr:sr, alpha:alpha, nameSize:nameSize, roleSize:roleSize});
+  });
+
+  // Sort back-to-front so closer nodes draw on top
+  labelNodes.sort(function(a,b){ return b.n.pos.z - a.n.pos.z; });
+
+  var FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+  labelNodes.forEach(function(item){
+    var n=item.n, np=item.np, sr=item.sr;
+    var nameSize=item.nameSize, roleSize=item.roleSize;
+
+    // Position: strictly above the node sprite top edge
+    var gap = Math.max(4, sr * 0.28);
+    var ty = np.y - sr - gap; // bottom of name text
+    var tx = np.x;
+
+    // Node color
     var ec = curMode===4 ? MONO : (effCol[n.id]||n.color);
     var rgb = h2r(ec);
-
-    // Font sizes based on node size
-    var nameSize = Math.max(9, Math.min(15, sr * 1.1));
-    var roleSize = Math.max(7, Math.min(11, sr * 0.78));
+    var nameCol = curMode===4 ? "rgba(192,196,204,1)" : "rgba(232,237,248,1)";
+    var roleCol = "rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.9)";
+    var shadowCol = "rgba(0,0,0,0.9)";
 
     lctx.save();
-    lctx.globalAlpha = alpha;
+    lctx.globalAlpha = item.alpha;
     lctx.textAlign = "center";
     lctx.textBaseline = "bottom";
 
-    // Name — white with text shadow
-    lctx.font = "500 "+nameSize+"px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-    // Shadow for readability
-    lctx.fillStyle = "rgba(0,0,0,0.85)";
-    lctx.fillText(n.label, tx+1, ty+1);
-    lctx.fillStyle = "rgba(0,0,0,0.85)";
-    lctx.fillText(n.label, tx-1, ty+1);
-    // Actual text
-    lctx.fillStyle = curMode===4
-      ? "rgba(192,196,204,1)"
-      : "rgba(230,235,248,1)";
+    // --- NAME ---
+    lctx.font = "600 "+nameSize+"px "+FONT;
+
+    // Measure to draw background pill for readability
+    var nw = lctx.measureText(n.label).width;
+    var pillPad = 4;
+    var pillX = tx - nw/2 - pillPad;
+    var pillY = ty - nameSize - pillPad;
+    var pillW = nw + pillPad*2;
+    var pillH = nameSize + pillPad*2;
+    lctx.fillStyle = "rgba(10,11,16,0.55)";
+    roundRect(lctx, pillX, pillY, pillW, pillH, 3);
+    lctx.fill();
+
+    // Name text
+    lctx.fillStyle = nameCol;
     lctx.fillText(n.label, tx, ty);
 
-    // Role — colored, smaller, below name
-    var ry = ty + nameSize + 1;
-    lctx.font = roleSize+"px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-    lctx.fillStyle = "rgba(0,0,0,0.7)";
-    lctx.fillText(n.role, tx+1, ry+1);
-    lctx.fillStyle = "rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.85)";
+    // --- ROLE --- (immediately below name)
+    var ry = ty + roleSize + 2;
+    lctx.font = roleSize+"px "+FONT;
+    var rw = lctx.measureText(n.role).width;
+    // Small pill behind role
+    lctx.fillStyle = "rgba(10,11,16,0.45)";
+    roundRect(lctx, tx-rw/2-3, ry-roleSize-2, rw+6, roleSize+4, 3);
+    lctx.fill();
+
+    lctx.textBaseline = "bottom";
+    lctx.fillStyle = roleCol;
     lctx.fillText(n.role, tx, ry);
 
     lctx.restore();

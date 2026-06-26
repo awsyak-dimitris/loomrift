@@ -110,7 +110,20 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 .rp-dot{width:8px;height:8px;border-radius:50%}
 #rp-alert-row{padding:8px 18px}
 .rp-alert-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:500;margin-bottom:4px}
-#rp-actions{padding:12px 16px;display:flex;flex-direction:column;gap:8px;margin-top:auto;border-top:0.5px solid #2a2d3a}
+#rp-fields{padding:0 0 8px}
+.rp-field-section{padding:8px 18px 4px;font-size:9px;font-weight:600;color:#3a4050;letter-spacing:.1em;text-transform:uppercase}
+.rp-field-row{display:flex;align-items:center;gap:8px;padding:4px 18px;cursor:pointer}
+.rp-field-row:hover{background:rgba(255,255,255,0.03)}
+.rp-field-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0}
+.rp-field-val{font-size:11.5px;color:#c0c8d8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-field-val.empty{color:#3a4050;font-style:italic}
+.rp-field-val a{color:#5a9ae8;text-decoration:none}
+.rp-field-val a:hover{text-decoration:underline}
+#rp-ai-section{padding:10px 16px;border-top:0.5px solid #2a2d3a;margin-top:4px}
+#rp-ai-btn{width:100%;padding:8px;border-radius:8px;background:#141e2e;border:0.5px solid #2a4070;color:#5a8ac8;font-size:11px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+#rp-ai-btn:hover{background:#1a2840;border-color:#3a5a90;color:#8ab8e8}
+#rp-ai-result{font-size:11px;color:#9aa0b8;line-height:1.5;padding:8px 0 4px;display:none}
+#rp-actions{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-top:0.5px solid #2a2d3a}
 .rp-btn{padding:9px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;text-align:center}
 .rp-btn.edit{background:#1e2a40;color:#8ab8e8;border:0.5px solid #2a4a70}
 .rp-btn.edit:hover{background:#253450}
@@ -201,10 +214,14 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
     <div id="rp-role"></div>
     <div id="rp-sep"></div>
     <div class="rp-row"><span class="rp-label">Статус</span><span class="rp-value" id="rp-status-val"></span></div>
-    <div class="rp-row"><span class="rp-label">Форма</span><span class="rp-value" id="rp-shape-val"></span></div>
     <div class="rp-row"><span class="rp-label">Уровень</span><span class="rp-value" id="rp-lvl-val"></span></div>
     <div class="rp-row"><span class="rp-label">Группа</span><span class="rp-value" id="rp-grp-val"></span></div>
     <div id="rp-alert-row"></div>
+    <div id="rp-fields"></div>
+    <div id="rp-ai-section">
+      <button id="rp-ai-btn" onclick="runAISummary()">🤖 AI — сводка по узлу</button>
+      <div id="rp-ai-result"></div>
+    </div>
     <div id="rp-actions">
       <button class="rp-btn edit" id="rp-edit-btn">✏️ Редактировать</button>
       <button class="rp-btn add" id="rp-add-btn">➕ Добавить дочерний</button>
@@ -244,6 +261,12 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
       <h3 id="mdl-t">Новый узел</h3>
       <div class="fl"><label>Имя</label><input id="fi-n" placeholder="Иван Петров"/></div>
       <div class="fl"><label>Роль</label><input id="fi-r" placeholder="Designer"/></div>
+      <div class="fl"><label>Тип сущности</label>
+        <select id="fi-et" onchange="onEntityTypeChange()">
+          <option value="person">👤 Человек / Персона</option>
+          <option value="org">🏢 Компания / Отдел / Проект</option>
+        </select>
+      </div>
       <div class="fl"><label>Форма</label>
         <select id="fi-s">
           <option value="circle">● Круг</option>
@@ -346,7 +369,16 @@ function mkN(id,lb,rl,sh,co,sz,gr){
   return{id:id,label:lb,role:rl,shape:sh,color:co,sz:sz,group:gr,
     parentId:null,children:[],lvl:0,
     pos:new THREE.Vector3(0,0,0),targetPos:new THREE.Vector3(0,0,0),
-    opacity:0,birthTime:-999,avatar:null,alert:null};
+    opacity:0,birthTime:-999,avatar:null,alert:null,
+    entityType:"person", // "person" | "org"
+    // Person fields
+    phone:"",email:"",telegram:"",instagram:"",linkedin:"",
+    birthday:"",location:"",bio:"",
+    // Org fields
+    website:"",industry:"",size:"",founded:"",
+    // AI summary cache
+    aiSummary:"",aiSummaryDate:""
+  };
 }
 function addC(p,c){p.children.push(c);c.parentId=p.id;nodeMap[c.id]=c;}
 function setLvl(n,l){n.lvl=l;n.children.forEach(function(c){setLvl(c,l+1);});}
@@ -670,27 +702,122 @@ var SHAPE_NAMES={circle:"● Круг",triangle:"▲ Треугольник",sta
 function openRPanel(id){
   rpId=id;var n=nodeMap[id];if(!n)return;
   var panel=document.getElementById("rpanel");panel.classList.add("open");
+  var ec=effCol[n.id]||n.color;
   // Avatar
   var avEl=document.getElementById("rp-av");avEl.innerHTML="";
+  avEl.style.borderColor="#"+ec.toString(16).padStart(6,"0");
   if(n.avatar){var img2=document.createElement("img");img2.src=n.avatar;avEl.appendChild(img2);}
-  else{var ec=effCol[n.id]||n.color;avEl.style.background="#"+ec.toString(16).padStart(6,"0");var sp=document.createElement("span");sp.id="rp-av-txt";sp.textContent=n.label.substring(0,2).toUpperCase();avEl.appendChild(sp);}
+  else{avEl.style.background="rgba("+h2r(ec).join(",")+",0.35)";
+    var sp=document.createElement("span");sp.style.color="#"+ec.toString(16).padStart(6,"0");
+    sp.textContent=n.label.substring(0,2).toUpperCase();avEl.appendChild(sp);}
   document.getElementById("rp-name").textContent=n.label;
-  document.getElementById("rp-role").textContent=n.role;
-  // Status
+  document.getElementById("rp-role").textContent=(n.entityType==="org"?"🏢 ":"👤 ")+n.role;
   var stName=STATUS_NAMES[STM[n.id]||"green"]||"🟢";
   document.getElementById("rp-status-val").textContent=stName;
-  document.getElementById("rp-shape-val").textContent=SHAPE_NAMES[n.shape]||n.shape;
   document.getElementById("rp-lvl-val").textContent="LVL "+n.lvl;
   document.getElementById("rp-grp-val").textContent=n.group||"—";
-  // Alert
+  // Alert badge
   var alRow=document.getElementById("rp-alert-row");alRow.innerHTML="";
   if(n.alert){var t=AL[n.alert.type];if(t){var badge=document.createElement("div");badge.className="rp-alert-badge";badge.style.background=t.bg;badge.style.color=t.col;badge.style.border="0.5px solid "+t.col+"44";badge.innerHTML="<span style='font-size:16px'>"+t.sym+"</span><span>"+(n.alert.text||t.label)+"</span>";alRow.appendChild(badge);}}
+  // Entity-specific fields
+  var flds=document.getElementById("rp-fields");flds.innerHTML="";
+  function addSection(title){var s=document.createElement("div");s.className="rp-field-section";s.textContent=title;flds.appendChild(s);}
+  function addField(icon,label,val,href){
+    var row=document.createElement("div");row.className="rp-field-row";
+    var ico=document.createElement("span");ico.className="rp-field-icon";ico.textContent=icon;
+    var v=document.createElement("span");v.className="rp-field-val"+(val?"":  " empty");
+    if(val&&href){v.innerHTML="<a href='"+href+"' target='_blank'>"+val+"</a>";}
+    else v.textContent=val||"не заполнено";
+    row.onclick=function(){if(!val)openEdit(id);};
+    row.appendChild(ico);row.appendChild(v);flds.appendChild(row);
+  }
+  if(n.entityType==="person"){
+    addSection("Контакты");
+    addField("📱",null,n.phone,n.phone?"tel:"+n.phone:null);
+    addField("✉️",null,n.email,n.email?"mailto:"+n.email:null);
+    addField("✈️",null,n.telegram?("@"+n.telegram):null,n.telegram?"https://t.me/"+n.telegram:null);
+    addField("📸",null,n.instagram?("@"+n.instagram):null,n.instagram?"https://instagram.com/"+n.instagram:null);
+    addField("💼",null,n.linkedin,n.linkedin?"https://linkedin.com/in/"+n.linkedin:null);
+    addSection("Личное");
+    addField("🎂",null,n.birthday||null,null);
+    addField("📍",null,n.location||null,null);
+    if(n.bio){var bioDiv=document.createElement("div");bioDiv.style.cssText="padding:4px 18px 8px;font-size:11px;color:#8a92a8;line-height:1.5";bioDiv.textContent=n.bio;flds.appendChild(bioDiv);}
+  } else {
+    addSection("Организация");
+    addField("🌐",null,n.website,n.website?"https://"+n.website:null);
+    addField("🏭",null,n.industry||null,null);
+    addField("👥",null,n.size?n.size+" чел.":null,null);
+    addField("📅",null,n.founded?("Осн. "+n.founded):null,null);
+    addSection("Дочерние");
+    var kids=n.children||[];
+    if(kids.length){kids.slice(0,4).forEach(function(c){addField("└",null,c.label+" · "+c.role,null);});
+      if(kids.length>4){var more=document.createElement("div");more.style.cssText="padding:2px 18px;font-size:10px;color:#3a4050";more.textContent="+ ещё "+(kids.length-4);flds.appendChild(more);}}
+    else{addField("└",null,null,null);}
+  }
+  // AI section
+  var aiRes=document.getElementById("rp-ai-result");
+  if(n.aiSummary){aiRes.textContent=n.aiSummary;aiRes.style.display="block";}
+  else{aiRes.style.display="none";}
   // Buttons
   document.getElementById("rp-edit-btn").onclick=function(){closeRPanel();openEdit(id);};
   document.getElementById("rp-add-btn").onclick=function(){closeRPanel();openAdd(id);};
   document.getElementById("rp-del-btn").onclick=function(){closeRPanel();delNode(id);};
 }
 function closeRPanel(){document.getElementById("rpanel").classList.remove("open");rpId=null;}
+
+// ===== AI SUMMARY =====
+async function runAISummary(){
+  if(!rpId)return;
+  var n=nodeMap[rpId];if(!n)return;
+  var btn=document.getElementById("rp-ai-btn");
+  var res=document.getElementById("rp-ai-result");
+  btn.textContent="⏳ Анализирую...";btn.disabled=true;
+  res.style.display="none";
+
+  // Build context about this node and its subtree
+  function descNode(nd,depth){
+    var indent="  ".repeat(depth);
+    var line=indent+"- "+nd.label+" ("+nd.role+")";
+    if(nd.alert)line+=" ["+AL[nd.alert.type].sym+"]";
+    var kids=nd.children.filter(function(c){return nodeMap[c.id];});
+    return line+(kids.length?"
+"+kids.map(function(c){return descNode(nodeMap[c.id],depth+1);}).join("
+"):"");
+  }
+  var treeDesc=descNode(n,0);
+  var entityInfo=n.entityType==="person"
+    ? "Телефон: "+(n.phone||"—")+", Email: "+(n.email||"—")+", Локация: "+(n.location||"—")
+    : "Сайт: "+(n.website||"—")+", Отрасль: "+(n.industry||"—")+", Размер: "+(n.size||"—");
+
+  var prompt="Ты аналитик команд и проектов. Дай краткую сводку (3-4 предложения) по этому узлу:
+
+Название: "+n.label+"
+Роль: "+n.role+"
+Тип: "+(n.entityType==="person"?"Человек":"Организация/Отдел")+"
+"+entityInfo+"
+
+Структура:
+"+treeDesc+"
+
+Фокус: статус, риски, ключевые люди.";
+
+  try{
+    var resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6",max_tokens:300,
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+    var data=await resp.json();
+    var text=data.content&&data.content[0]?data.content[0].text:"Не удалось получить ответ";
+    n.aiSummary=text;n.aiSummaryDate=new Date().toLocaleDateString("ru");
+    res.textContent=text;res.style.display="block";
+    scheduleSave();
+  }catch(e){res.textContent="Ошибка: "+e.message;res.style.display="block";}
+  btn.textContent="🤖 Обновить сводку";btn.disabled=false;
+}
 
 // ===== AVATAR CROP =====
 var _cropScale=1,_cropX=0,_cropY=0,_cropDragging=false,_cropLX=0,_cropLY=0,_cropSrcB64=null,_cropTarget=null;
@@ -909,11 +1036,15 @@ function openAdd(parentId){
   document.getElementById("ov").classList.add("open");
   setTimeout(function(){document.getElementById("fi-n").focus();},80);
 }
+function onEntityTypeChange(){
+  // Could show/hide fields based on type in future
+}
 function openEdit(id){
   mdlMode="edit";mdlTgt=id;var n=nodeMap[id];
   document.getElementById("mdl-t").textContent="Редактировать";
   document.getElementById("fi-n").value=n.label;document.getElementById("fi-r").value=n.role;
   document.getElementById("fi-s").value=n.shape==="main"?"circle":n.shape;
+  document.getElementById("fi-et").value=n.entityType||"person";
   var ck="gray";Object.entries({green:C.green,yellow:C.yellow,red:C.red,gray:C.gray}).forEach(function(e){if(e[1]===n.color)ck=e[0];});
   document.getElementById("fi-c").value=ck;
   document.getElementById("fi-pw").style.display="none";
@@ -948,7 +1079,9 @@ function submitMdl(){
     return;
   }
   if(mdlMode==="edit"){
-    var n=nodeMap[mdlTgt];n.label=name;n.role=role;n.shape=shape;n.color=col;n.avatar=curAv;effCol[n.id]=col;
+    var n=nodeMap[mdlTgt];n.label=name;n.role=role;n.shape=shape;n.color=col;n.avatar=curAv;
+    n.entityType=document.getElementById("fi-et").value||"person";
+    effCol[n.id]=col;
     if(sprO[n.id]){sprO[n.id].material.map=mkTex(n,false);sprO[n.id].material.needsUpdate=true;}
     updLbl(n.id,0xe8edf8,col);
   } else {
@@ -970,6 +1103,7 @@ function submitMdl(){
     var par=nodeMap[parId]||nodeMap["mixa"];
     var lvl=par.lvl+1,sz2=lvl<=2?18:lvl===3?14:lvl<=4?11:9,grp=par.group||"mixa";
     var newN=mkN(uid(),name,role,shape,col,sz2,grp);newN.lvl=lvl;newN.parentId=par.id;newN.avatar=curAv;
+    newN.entityType=document.getElementById("fi-et").value||"person";
     addC(par,newN);STM[newN.id]="green";effCol[newN.id]=col;mkSprite(newN);
     if(par.id==="mixa"||expN.has(par.id)){visN.add(newN.id);newN.opacity=1;newN.birthTime=performance.now()/1000;expN.add(par.id);}
     calcPos();rebuildEdges();
@@ -1050,8 +1184,34 @@ function mkTex(n,isAct,colOvr){
   }
   var sk=n.shape==="hexagon"?"triangle":(n.shape==="main"?"main":n.shape);if(!ICONS[sk])sk="circle";
   var iurl=ICONS[sk][isAct?"a":"d"];var img2=imgC[iurl];
-  if(img2){ctx2.drawImage(img2,0,0,sz2,sz2);ctx2.globalCompositeOperation="source-in";ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.fillRect(0,0,sz2,sz2);ctx2.globalCompositeOperation="source-over";}
-  else{ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-4,0,Math.PI*2);ctx2.fill();}
+
+  // Draw filled color background at 50% opacity first
+  ctx2.save();
+  ctx2.globalAlpha=0.48;
+  ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";
+  if(sk==="circle"||sk==="main"){
+    ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-4,0,Math.PI*2);ctx2.fill();
+  } else if(sk==="triangle"){
+    ctx2.beginPath();ctx2.moveTo(sz2/2,6);ctx2.lineTo(6,sz2-6);ctx2.lineTo(sz2-6,sz2-6);ctx2.closePath();ctx2.fill();
+  } else if(sk==="square"){
+    ctx2.fillRect(8,8,sz2-16,sz2-16);
+  } else if(sk==="star"){
+    var cx2=sz2/2,cy2=sz2/2,ro=sz2/2-5,ri=ro*0.42;
+    ctx2.beginPath();for(var si=0;si<10;si++){var sa=-Math.PI/2+si*Math.PI/5,sr2=si%2===0?ro:ri;ctx2.lineTo(cx2+sr2*Math.cos(sa),cy2+sr2*Math.sin(sa));}ctx2.closePath();ctx2.fill();
+  }
+  ctx2.restore();
+
+  // Draw SVG icon outline on top
+  if(img2){
+    ctx2.drawImage(img2,0,0,sz2,sz2);
+    ctx2.globalCompositeOperation="source-in";
+    ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";
+    ctx2.fillRect(0,0,sz2,sz2);
+    ctx2.globalCompositeOperation="source-over";
+  } else {
+    ctx2.strokeStyle="rgba("+r+","+g+","+b+",1)";ctx2.lineWidth=4;
+    ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-6,0,Math.PI*2);ctx2.stroke();
+  }
   return new THREE.CanvasTexture(cv2);
 }
 function invalidateTexCache(id){/* no-op */}
@@ -1167,10 +1327,12 @@ function toggleNode(id){
 }
 function handleClick(id){
   lastCId=id;selId=id;revealInSB(id);openRPanel(id);
-  if(curMode===3){var grp=nodeMap[id].group;if(grp&&grp!=="mixa"){if(hlGrp.has(grp))hlGrp.delete(grp);else hlGrp.add(grp);}toggleNode(id);applyMode(null);}
+  // Smooth camera center on clicked node
+  var n=nodeMap[id];
+  tPan.set(n.targetPos.x, n.targetPos.y, 0);
+  if(curMode===3){var grp=n.group;if(grp&&grp!=="mixa"){if(hlGrp.has(grp))hlGrp.delete(grp);else hlGrp.add(grp);}toggleNode(id);applyMode(null);}
   else{toggleNode(id);applyMode(curMode===2?id:null);}
-  // Path animation: if reached leaf or fully expanded
-  var n=nodeMap[id];var atBottom=!n.children.length||(expN.has(id)&&n.children.every(function(c){return expN.has(c.id)||!c.children.length;}));
+  var atBottom=!n.children.length||(expN.has(id)&&n.children.every(function(c){return expN.has(c.id)||!c.children.length;}));
   if(atBottom)buildPath(id);
   buildSB();
 }
@@ -1384,8 +1546,8 @@ function drawLines(dt){
     if(!n.alert||!visN.has(n.id))return;
     var t=AL[n.alert.type];if(!t)return;
     var col=t.col,rgb2=hex2s(col);
-    var np=proj(n.pos),bsz=Math.max(9,scrRad(n)*0.65);
-    var bx=np.x+scrRad(n)*1.05,by=np.y-scrRad(n)*1.05;
+    var np=proj(n.pos),bsz=Math.max(7,scrRad(n)*0.48);
+    var bx=np.x+scrRad(n)*1.28,by=np.y-scrRad(n)*1.28;
     var pulse=0.82+Math.sin(performance.now()*0.004)*0.18;
     lctx.save();
         lctx.fillStyle=t.bg;lctx.shadowBlur=0;

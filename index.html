@@ -322,32 +322,113 @@ var dotProgress=0;
 var sph={theta:0,phi:Math.PI/2,r:420},tSph={theta:0,phi:Math.PI/2,r:420};
 var panOff=new THREE.Vector3(),tPan=new THREE.Vector3();
 
-// ===== LAYOUT =====
-function separate(){
-  var ns2=Object.values(nodeMap).filter(function(n){return visN.has(n.id);});
-  for(var it=0;it<4;it++){
-    for(var i=0;i<ns2.length;i++){for(var j=i+1;j<ns2.length;j++){
-      var a=ns2[i],b=ns2[j];var minD=(a.sz+b.sz)*0.58+18;
-      var dx=b.targetPos.x-a.targetPos.x,dy=b.targetPos.y-a.targetPos.y,dz=b.targetPos.z-a.targetPos.z;
-      var d=Math.sqrt(dx*dx+dy*dy+dz*dz);
-      if(d<minD&&d>0.01){var push=(minD-d)/2/d;
-        a.targetPos.x-=dx*push;a.targetPos.y-=dy*push*0.4;a.targetPos.z-=dz*push;
-        b.targetPos.x+=dx*push;b.targetPos.y+=dy*push*0.4;b.targetPos.z+=dz*push;}
     }}
   }
 }
-function calcPos(){
+
+
+// ===== LAYOUT ENGINE — proper non-overlapping tree =====
+// Assigns subtree widths bottom-up, places nodes top-down
+// Works in both 2D (Z=0) and 3D (Z spread)
+
+function getSubtreeWidth(id, depth){
+  var n=nodeMap[id];
+  if(!expN.has(id)||!n.children.length) return n.sz*2.2+8;
+  var total=0;
+  n.children.forEach(function(c){ total+=getSubtreeWidth(c.id,depth+1)+6; });
+  return Math.max(total-6, n.sz*2.2+8);
+}
+
+function placeSubtree(id, cx, cy, cz, depth, parentAngle){
+  var n=nodeMap[id];
+  n.targetPos.set(cx,cy,cz);
+  if(!expN.has(id)||!n.children.length) return;
+
+  var kids=n.children;
+  var nKids=kids.length;
+
   if(is2D){
-    function sw(id){var n=nodeMap[id];if(!expN.has(id)||!n.children.length)return Math.max(n.sz*3,58);var t=0;n.children.forEach(function(c){t+=sw(c.id)+18;});return Math.max(t-18,n.sz*3);}
-    function place(id,cx,y){var n=nodeMap[id];n.targetPos.set(cx,y,0);if(!expN.has(id)||!n.children.length)return;var kids=n.children,tw=0,ws=kids.map(function(c){var w=sw(c.id);tw+=w;return w;});tw+=(kids.length-1)*18;var x2=-tw/2,ys=-(90+n.sz*1.6);kids.forEach(function(c,i){place(c.id,cx+x2+ws[i]/2,y+ys);x2+=ws[i]+18;});}
-    place("mixa",0,170);
+    // Pure 2D: spread horizontally, step down
+    var yStep=-(72+n.sz*1.4);
+    var widths=kids.map(function(c){return getSubtreeWidth(c.id,depth+1);});
+    var totalW=widths.reduce(function(a,b){return a+b;},0)+(nKids-1)*8;
+    var x=-totalW/2;
+    kids.forEach(function(c,i){
+      var w=widths[i];
+      placeSubtree(c.id, cx+x+w/2, cy+yStep, 0, depth+1, 0);
+      x+=w+8;
+    });
   } else {
-    nodeMap["mixa"].targetPos.set(0,60,0);
-    var L={2:{r:200,yo:-72,sp:1.5*Math.PI},3:{r:126,yo:-60,sp:1.2*Math.PI},4:{r:78,yo:-48,sp:0.9*Math.PI},5:{r:58,yo:-36,sp:0.8*Math.PI},6:{r:44,yo:-28,sp:0.7*Math.PI}};
-    function lay(par,ab){if(!par.children.length||!expN.has(par.id))return;var kids=par.children,l=L[kids[0].lvl]||{r:40,yo:-24,sp:0.7*Math.PI};kids.forEach(function(c,i){var n=nodeMap[c.id],f=kids.length===1?0.5:i/(kids.length-1),a=ab-l.sp/2+f*l.sp;n.targetPos.set(par.targetPos.x+Math.cos(a)*l.r,par.targetPos.y+l.yo,par.targetPos.z+Math.sin(a)*l.r*0.45);lay(n,a);});}
-    lay(nodeMap["mixa"],-Math.PI/2);
+    // 3D: radial fan centered on parentAngle
+    // Radius depends on depth
+    var radii=[0,200,140,95,68,50,38];
+    var r=radii[Math.min(depth,radii.length-1)];
+    // Angular spread depends on number of kids and depth
+    var spreads=[0, Math.PI*1.6, Math.PI*1.3, Math.PI*1.1, Math.PI*0.9, Math.PI*0.75, Math.PI*0.6];
+    var spread=spreads[Math.min(depth,spreads.length-1)];
+    // Limit spread for many children
+    if(nKids>6) spread=Math.min(spread, Math.PI*0.8);
+    // Y drop per level
+    var yDrops=[0,-72,-62,-52,-42,-34,-26];
+    var yDrop=yDrops[Math.min(depth,yDrops.length-1)];
+    // Z spread decreases with depth
+    var zFacs=[0,0.45,0.38,0.28,0.18,0.1,0.05];
+    var zFac=zFacs[Math.min(depth,zFacs.length-1)];
+
+    kids.forEach(function(c,i){
+      var f=nKids===1?0.5:i/(nKids-1);
+      var angle=parentAngle - spread/2 + f*spread;
+      var nx=cx+Math.cos(angle)*r;
+      var ny=cy+yDrop;
+      var nz=cz+Math.sin(angle)*r*zFac;
+      placeSubtree(c.id, nx, ny, nz, depth+1, angle);
+    });
   }
-  separate();
+}
+
+// Push-apart collision resolution with spring forces
+function resolveCollisions(){
+  var ns2=Object.values(nodeMap).filter(function(n){return visN.has(n.id);});
+  var count=ns2.length;
+  if(count<2)return;
+
+  // Multiple passes — more passes = better separation
+  var passes=is2D?6:5;
+  for(var it=0;it<passes;it++){
+    for(var i=0;i<count;i++){
+      for(var j=i+1;j<count;j++){
+        var a=ns2[i],b=ns2[j];
+        // Skip if not siblings or close relatives — only push apart same-level or nearby
+        var minD=(a.sz+b.sz)*0.6+22;
+        var dx=b.targetPos.x-a.targetPos.x;
+        var dy=b.targetPos.y-a.targetPos.y;
+        var dz=is2D?0:(b.targetPos.z-a.targetPos.z);
+        var d2=dx*dx+dy*dy+dz*dz;
+        if(d2<minD*minD&&d2>0.0001){
+          var d=Math.sqrt(d2);
+          var push=(minD-d)/d;
+          // Horizontal push stronger than vertical (preserve Y structure)
+          var px=dx*push*0.55;
+          var pz=dz*push*(is2D?0:0.45);
+          var py=dy*push*0.15; // very little vertical push to keep hierarchy
+          a.targetPos.x-=px; a.targetPos.z-=pz; a.targetPos.y-=py;
+          b.targetPos.x+=px; b.targetPos.z+=pz; b.targetPos.y+=py;
+        }
+      }
+    }
+  }
+}
+
+function calcPos(){
+  // Reset root position
+  var rootY=is2D?170:60;
+  nodeMap["mixa"].targetPos.set(0,rootY,0);
+
+  // Place entire tree
+  placeSubtree("mixa", 0, rootY, 0, 1, -Math.PI/2);
+
+  // Resolve collisions after initial placement
+  resolveCollisions();
 }
 
 // ===== EXPAND ALL =====

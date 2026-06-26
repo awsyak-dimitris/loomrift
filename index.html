@@ -322,11 +322,6 @@ var dotProgress=0;
 var sph={theta:0,phi:Math.PI/2,r:420},tSph={theta:0,phi:Math.PI/2,r:420};
 var panOff=new THREE.Vector3(),tPan=new THREE.Vector3();
 
-    }}
-  }
-}
-
-
 // ===== LAYOUT ENGINE — proper non-overlapping tree =====
 // Assigns subtree widths bottom-up, places nodes top-down
 // Works in both 2D (Z=0) and 3D (Z spread)
@@ -629,7 +624,7 @@ function submitMdl(){
 }
 
 // ===== LOCALSTORAGE =====
-var SKEY="loomrift_v5",_svT=null,_svD=null;
+var SKEY="loomrift_v6",_svT=null,_svD=null;
 function scheduleSave(){clearTimeout(_svT);_svT=setTimeout(saveState,800);}
 function saveState(){
   try{
@@ -682,10 +677,9 @@ function resetAll(){
 var imgC={},avC={};
 var _texCache={};
 var _lblCache={};
-function texCacheKey(n,isAct,colOvr){return n.id+(isAct?"a":"d")+(colOvr!==undefined?colOvr:"")+(n.avatar?"av":"")+(n.color);}
+function texCacheKey(n,isAct,colOvr){return n.id+(isAct?"a":"d")+(colOvr!==undefined?colOvr:"x")+(n.avatar?"av":"")+(n.color);}
 function mkTex(n,isAct,colOvr){
-  var ck=texCacheKey(n,isAct,colOvr);
-  if(_texCache[ck])return _texCache[ck];
+  /* no cache for correctness */
   var sz2=128,cv2=document.createElement("canvas");cv2.width=sz2;cv2.height=sz2;
   var ctx2=cv2.getContext("2d");ctx2.clearRect(0,0,sz2,sz2);
   var col=colOvr!==undefined?colOvr:(effCol[n.id]||n.color);
@@ -704,19 +698,16 @@ function mkTex(n,isAct,colOvr){
   var iurl=ICONS[sk][isAct?"a":"d"];var img2=imgC[iurl];
   if(img2){ctx2.drawImage(img2,0,0,sz2,sz2);ctx2.globalCompositeOperation="source-in";ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.fillRect(0,0,sz2,sz2);ctx2.globalCompositeOperation="source-over";}
   else{ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-4,0,Math.PI*2);ctx2.fill();}
-  var tex=new THREE.CanvasTexture(cv2);
-  _texCache[ck]=tex;
-  return tex;
+  return new THREE.CanvasTexture(cv2);
 }
-function invalidateTexCache(id){Object.keys(_texCache).forEach(function(k){if(k.startsWith(id))delete _texCache[k];});}
+function invalidateTexCache(id){/* no-op */}
 function mkLbl(lb,rl,nc,rc){
-  var ck2=lb+"|"+rl+"|"+nc+"|"+rc;if(_lblCache[ck2])return _lblCache[ck2];
   var w=320,h=80,cv2=document.createElement("canvas");cv2.width=w;cv2.height=h;
   var ctx2=cv2.getContext("2d");ctx2.clearRect(0,0,w,h);
   ctx2.fillStyle="#"+nc.toString(16).padStart(6,"0");ctx2.font="500 25px sans-serif";ctx2.textAlign="center";ctx2.textBaseline="middle";
   ctx2.shadowColor="rgba(0,0,0,0.95)";ctx2.shadowBlur=12;ctx2.fillText(lb,w/2,h*.35);ctx2.shadowBlur=0;
   ctx2.fillStyle="#"+rc.toString(16).padStart(6,"0");ctx2.font="17px sans-serif";ctx2.fillText(rl,w/2,h*.68);
-  var lt=new THREE.CanvasTexture(cv2);_lblCache[ck2]=lt;return lt;
+  return new THREE.CanvasTexture(cv2);
 }
 var pCv=document.createElement("canvas");pCv.width=128;pCv.height=128;
 var pTex=new THREE.CanvasTexture(pCv);
@@ -742,7 +733,7 @@ function rebuildEdges(){edgeData.length=0;visN.forEach(function(id){var n=nodeMa
 function getAncs(id){var s=new Set();var c=nodeMap[id];while(c){s.add(c.id);c=c.parentId?nodeMap[c.parentId]:null;}return s;}
 function getDesc(id){var s=new Set([id]);function w(nid){var nd=nodeMap[nid];if(nd&&nd.children)nd.children.forEach(function(c){s.add(c.id);w(c.id);});}w(id);return s;}
 function rfx(id,isAct,colOvr){if(!sprO[id])return;invalidateTexCache(id);sprO[id].material.map=mkTex(nodeMap[id],isAct,colOvr);sprO[id].material.needsUpdate=true;}
-function updLbl(id,nc,rc){if(!lblM[id])return;var n=nodeMap[id];var newTex=mkLbl(n.label,n.role,nc,rc);if(lblM[id].map!==newTex){lblM[id].map=newTex;lblM[id].needsUpdate=true;}}
+function updLbl(id,nc,rc){if(!lblM[id])return;var n=nodeMap[id];lblM[id].map=mkLbl(n.label,n.role,nc,rc);lblM[id].needsUpdate=true;}
 
 function applyMode(cid){
   var all=Object.values(nodeMap);
@@ -1006,9 +997,8 @@ function animate(){
     drawPulse(effCol[selId]||nodeMap[selId].color,pulPh);
     var sn=nodeMap[selId];pSp.position.copy(sn.pos);pSp.scale.set(sn.sz*5,sn.sz*5,1);pMat.opacity=.9;
   } else {pCv.getContext("2d").clearRect(0,0,128,128);pTex.needsUpdate=true;pMat.opacity=0;}
-  var _nodeArr=Object.values(nodeMap);
-  _nodeArr.forEach(function(n){
-    if(visN.has(n.id)||n.pos.distanceToSquared(n.targetPos)>0.01)n.pos.lerp(n.targetPos,.09);
+  Object.values(nodeMap).forEach(function(n){
+    n.pos.lerp(n.targetPos,.09);
     var vis=visN.has(n.id),spawn=1;
     if(vis&&n.birthTime>0){var age=now-n.birthTime;if(age<0)spawn=0;else if(age<.4){var tt=age/.4,s2v=1.7;spawn=Math.max(0,Math.min(1,tt*tt*((s2v+1)*tt-s2v)));}}
     var sp=sprO[n.id],lb=lblO[n.id],hm=hitO[n.id];

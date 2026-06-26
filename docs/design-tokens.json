@@ -1,0 +1,117 @@
+{
+  "color": {
+    "bg": {
+      "value": "#090B12",
+      "type": "color"
+    },
+    "canvas": {
+      "value": "#0B0F17",
+      "type": "color"
+    },
+    "surface": {
+      "value": "#10151E",
+      "type": "color"
+    },
+    "elevated": {
+      "value": "#151B26",
+      "type": "color"
+    },
+    "hover": {
+      "value": "#1A2230",
+      "type": "color"
+    },
+    "selected": {
+      "value": "#202A3B",
+      "type": "color"
+    },
+    "border": {
+      "value": "#222B38",
+      "type": "color"
+    },
+    "fg": {
+      "value": "#F5F7FB",
+      "type": "color"
+    },
+    "fg2": {
+      "value": "#8F99AB",
+      "type": "color"
+    },
+    "fg3": {
+      "value": "#5A6373",
+      "type": "color"
+    },
+    "fg4": {
+      "value": "#3A4250",
+      "type": "color"
+    },
+    "green": {
+      "value": "#75FF52",
+      "type": "color"
+    },
+    "blue": {
+      "value": "#4FA7FF",
+      "type": "color"
+    },
+    "orange": {
+      "value": "#FFC34D",
+      "type": "color"
+    },
+    "purple": {
+      "value": "#8B5CF6",
+      "type": "color"
+    },
+    "danger": {
+      "value": "#FF5B73",
+      "type": "color"
+    }
+  },
+  "typography": {
+    "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "body": {
+      "size": "13px",
+      "lineHeight": "20px",
+      "weight": "400"
+    },
+    "label": {
+      "size": "11px",
+      "lineHeight": "16px",
+      "weight": "600",
+      "letterSpacing": "0.06em"
+    },
+    "heading": {
+      "size": "17px",
+      "lineHeight": "24px",
+      "weight": "600"
+    }
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    40,
+    48,
+    64,
+    96
+  ],
+  "radius": {
+    "sm": "8px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "20px"
+  },
+  "shadow": {
+    "soft": "0 1px 3px rgba(0,0,0,0.3)",
+    "medium": "0 4px 12px rgba(0,0,0,0.4)",
+    "strong": "0 10px 30px rgba(0,0,0,0.5)",
+    "xl": "0 20px 60px rgba(0,0,0,0.6)"
+  },
+  "motion": {
+    "ease": "cubic-bezier(0.16, 1, 0.3, 1)",
+    "durationFast": "150ms",
+    "durationNormal": "200ms",
+    "durationPanel": "280ms"
+  }
+}

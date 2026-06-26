@@ -943,7 +943,7 @@ function rebuildEdges(){edgeData.length=0;visN.forEach(function(id){var n=nodeMa
 function getAncs(id){var s=new Set();var c=nodeMap[id];while(c){s.add(c.id);c=c.parentId?nodeMap[c.parentId]:null;}return s;}
 function getDesc(id){var s=new Set([id]);function w(nid){var nd=nodeMap[nid];if(nd&&nd.children)nd.children.forEach(function(c){s.add(c.id);w(c.id);});}w(id);return s;}
 function rfx(id,isAct,colOvr){if(!sprO[id])return;invalidateTexCache(id);sprO[id].material.map=mkTex(nodeMap[id],isAct,colOvr);sprO[id].material.needsUpdate=true;}
-function updLbl(id,nc,rc){if(!lblM[id])return;var n=nodeMap[id];lblM[id].map=mkLbl(n.label,n.role,nc,rc);lblM[id].needsUpdate=true;}
+function updLbl(id,nc,rc){/* labels drawn on canvas */}
 
 function applyMode(cid){
   var all=Object.values(nodeMap);
@@ -1214,6 +1214,71 @@ function drawLines(dt){
     lctx.textAlign="center";lctx.textBaseline="middle";
     lctx.fillText(t.sym,bx,by+1);lctx.restore();
   });
+
+  // ===== DRAW LABELS ON CANVAS (always above node, screen-space) =====
+  var alertFilterActive = alertFilter !== null;
+  Object.values(nodeMap).forEach(function(n){
+    if(!visN.has(n.id)) return;
+    // Opacity fade for alert filter
+    var filterAlpha = 1.0;
+    if(alertFilterActive){
+      filterAlpha = (n.alert && n.alert.type===alertFilter) ? 1.0 : 0.0;
+    }
+    if(filterAlpha === 0) return;
+
+    var np = proj(n.pos);
+    var sr = scrRad(n);
+    // Label goes above: np.y - sr - gap
+    var gap = Math.max(sr * 0.35, 6);
+    var ty = np.y - sr - gap;
+    var tx = np.x;
+
+    // Compute spawn alpha
+    var spawnA = 1;
+    if(n.birthTime > 0){
+      var age = lastT - n.birthTime;
+      if(age < 0) spawnA = 0;
+      else if(age < 0.4) spawnA = Math.max(0, Math.min(1, (age/0.4)));
+    }
+    var alpha = spawnA * filterAlpha;
+    if(alpha < 0.01) return;
+
+    // Node color for label
+    var ec = curMode===4 ? MONO : (effCol[n.id]||n.color);
+    var rgb = h2r(ec);
+
+    // Font sizes based on node size
+    var nameSize = Math.max(9, Math.min(15, sr * 1.1));
+    var roleSize = Math.max(7, Math.min(11, sr * 0.78));
+
+    lctx.save();
+    lctx.globalAlpha = alpha;
+    lctx.textAlign = "center";
+    lctx.textBaseline = "bottom";
+
+    // Name — white with text shadow
+    lctx.font = "500 "+nameSize+"px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    // Shadow for readability
+    lctx.fillStyle = "rgba(0,0,0,0.85)";
+    lctx.fillText(n.label, tx+1, ty+1);
+    lctx.fillStyle = "rgba(0,0,0,0.85)";
+    lctx.fillText(n.label, tx-1, ty+1);
+    // Actual text
+    lctx.fillStyle = curMode===4
+      ? "rgba(192,196,204,1)"
+      : "rgba(230,235,248,1)";
+    lctx.fillText(n.label, tx, ty);
+
+    // Role — colored, smaller, below name
+    var ry = ty + nameSize + 1;
+    lctx.font = roleSize+"px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    lctx.fillStyle = "rgba(0,0,0,0.7)";
+    lctx.fillText(n.role, tx+1, ry+1);
+    lctx.fillStyle = "rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.85)";
+    lctx.fillText(n.role, tx, ry);
+
+    lctx.restore();
+  });
 }
 
 // ===== ANIMATE =====
@@ -1236,15 +1301,7 @@ function animate(){
     if(vis&&n.birthTime>0){var age=now-n.birthTime;if(age<0)spawn=0;else if(age<.4){var tt=age/.4,s2v=1.7;spawn=Math.max(0,Math.min(1,tt*tt*((s2v+1)*tt-s2v)));}}
     var sp=sprO[n.id],lb=lblO[n.id],hm=hitO[n.id];
     if(sp){sp.position.copy(n.pos);sp.scale.set(n.sz*spawn,n.sz*spawn,1);sp.material.opacity=vis?spawn:0;}
-    if(lb){
-      // Always place label above node in camera space (not world Y)
-      // Use camera up vector scaled by node size
-      var camUp=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
-      var off=(n.sz*.6+n.sz*.65)*spawn;
-      lb.position.set(n.pos.x+camUp.x*off, n.pos.y+camUp.y*off, n.pos.z+camUp.z*off);
-      var ls=n.sz*1.2*spawn;lb.scale.set(ls*4,ls,1);
-      lb.material.opacity=vis?spawn:0;lb.quaternion.copy(camera.quaternion);
-    }
+    // labels drawn on canvas, skip 3D sprite
     if(hm){hm.position.copy(n.pos);hm.quaternion.copy(camera.quaternion);}
   });
   renderer.render(scene,camera);drawLines(dt);

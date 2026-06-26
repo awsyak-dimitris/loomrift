@@ -192,7 +192,7 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
     <div class="ci-sep"></div>
     <div class="ci del" id="ci-del">🗑 Удалить</div>
   </div>
-  <button id="fab" onclick="openAdd(null)">+</button>
+  <button id="fab" onclick="openAdd(selId||'mixa')" title="Добавить к выбранному узлу">+</button>
   <!-- RIGHT DETAIL PANEL -->
   <div id="rpanel">
     <button id="rp-close" onclick="closeRPanel()">✕</button>
@@ -329,7 +329,7 @@ camera.position.set(0,0,420);camera.lookAt(0,0,0);
 var C={green:0x80B932,red:0xE51000,yellow:0xEFC44E,gray:0x554F56,teal:0x1ab89a,orange:0xd06a1a,blue:0x3a7ad0,purple:0x9a4ad0,cyan:0x1ab8d0};
 var DIM=0x2a2d38,MONO=0xc8cdd8;
 var STC={green:C.green,yellow:C.yellow,red:C.red,gray:C.gray,blue:C.blue};
-var GRP={mixa:C.blue,naskoka:C.green,spherica:0xd06a1a,loomrift:C.gray,gamestudio:C.purple,mediahub:C.cyan};
+var GRP={mixa:C.blue,naskoka:C.green,spherica:0xd06a1a,loomrift:C.gray,gamestudio:C.purple,mediahub:C.cyan,galera:C.orange};
 var STM={mixa:"green",naskoka:"green",spherica:"yellow",loomrift:"gray",ns_dev:"green",ns_design:"green",ns_biz:"yellow",fl:"green",an:"yellow",vl:"green",dm:"gray",kt:"green",ol:"green",mk:"green",iv:"green",nt:"yellow",pa:"red",sh_3d:"red",sh_env:"green",sh_anim:"yellow",kj1:"red",kj2:"red",kj3:"green",kj4:"gray",ev1:"green",ev2:"green",ev3:"yellow",am1:"yellow",am2:"green",am3:"red"};
 
 function h2r(h){return[(h>>16)&255,(h>>8)&255,h&255];}
@@ -390,6 +390,81 @@ var mc5=mkN("mc5","Eva","Jr Designer","circle",C.green,9,"mediahub");addC(nodeMa
 addC(mc5,mkN("mc6","Frank","Intern","circle",C.yellow,8,"mediahub"));
 [["mt1","Greg","CTO","circle",C.green],["mt2","Hana","DevOps","circle",C.red],["mt3","Ivan","Backend","circle",C.green],["mt4","Julia","Frontend","circle",C.yellow]].forEach(function(a){addC(mht,mkN(a[0],a[1],a[2],a[3],a[4],11,"mediahub"));});
 [["ms1","Ken","Sales Dir","circle",C.green],["ms2","Lisa","Acct Mgr","circle",C.green],["ms3","Max","Biz Dev","circle",C.yellow]].forEach(function(a){addC(mhs,mkN(a[0],a[1],a[2],a[3],a[4],11,"mediahub"));});
+
+// ===== GALERA PROJECT =====
+var galera=mkN("galera","GALERA","Creative Hub","circle",C.orange,20,"galera");
+addC(root,galera);
+
+// Dept 1: Production
+var gp=mkN("gal_prod","Production","Film & Media","square",C.orange,16,"galera");
+addC(galera,gp);
+var gp1=mkN("gp1","Anton K.","Exec Producer","circle",C.green,11,"galera");
+var gp2=mkN("gp2","Vera S.","Line Producer","circle",C.green,11,"galera");
+var gp3=mkN("gp3","Roma D.","Director","circle",C.yellow,11,"galera");
+[gp1,gp2,gp3].forEach(function(n){addC(gp,n);});
+// Lvl 5 under gp3
+var gp3a=mkN("gp3a","Sonya","1st AD","circle",C.green,9,"galera");
+var gp3b=mkN("gp3b","Ilya","2nd AD","circle",C.yellow,9,"galera");
+addC(gp3,gp3a);addC(gp3,gp3b);
+// Lvl 6 under gp3a
+addC(gp3a,mkN("gp3a1","Dasha","PA","circle",C.green,8,"galera"));
+addC(gp3a,mkN("gp3a2","Mark","PA","circle",C.gray,8,"galera"));
+
+var gp4=mkN("gp4","Nina","Casting Dir","circle",C.teal,11,"galera");
+addC(gp,gp4);
+addC(gp4,mkN("gp4a","Leo","Casting Asst","circle",C.green,9,"galera"));
+addC(gp4,mkN("gp4b","Alya","Casting Asst","circle",C.yellow,9,"galera"));
+
+// Dept 2: Creative
+var gc=mkN("gal_cre","Creative","Art & Design","triangle",C.purple,16,"galera");
+addC(galera,gc);
+var gc1=mkN("gc1","Max Art","Creative Dir","circle",C.purple,11,"galera");
+var gc2=mkN("gc2","Lena B.","Art Director","circle",C.green,11,"galera");
+var gc3=mkN("gc3","Kira V.","Motion Designer","circle",C.cyan,11,"galera");
+[gc1,gc2,gc3].forEach(function(n){addC(gc,n);});
+var gc1a=mkN("gc1a","Pavel","Sr Designer","circle",C.green,9,"galera");
+var gc1b=mkN("gc1b","Olya","UI Lead","circle",C.yellow,9,"galera");
+addC(gc1,gc1a);addC(gc1,gc1b);
+addC(gc1a,mkN("gc1a1","Tim J.","Jr Designer","star",C.green,8,"galera"));
+addC(gc1a,mkN("gc1a2","Anya","Illustrator","star",C.yellow,8,"galera"));
+var gc2a=mkN("gc2a","Seva","3D Artist","circle",C.green,9,"galera");
+addC(gc2,gc2a);
+addC(gc2a,mkN("gc2a1","Mira","Texture","circle",C.teal,8,"galera"));
+
+// Dept 3: Tech
+var gt=mkN("gal_tech","Tech","Engineering","square",C.cyan,16,"galera");
+addC(galera,gt);
+var gt1=mkN("gt1","Boris CTO","CTO","circle",C.green,11,"galera");
+var gt2=mkN("gt2","Alice","Backend Lead","circle",C.green,11,"galera");
+var gt3=mkN("gt3","Denis","Frontend Lead","circle",C.yellow,11,"galera");
+var gt4=mkN("gt4","Stas","DevOps","circle",C.red,11,"galera");
+[gt1,gt2,gt3,gt4].forEach(function(n){addC(gt,n);});
+var gt2a=mkN("gt2a","Fedor","Sr Backend","circle",C.green,9,"galera");
+var gt2b=mkN("gt2b","Zara","Backend Dev","circle",C.yellow,9,"galera");
+addC(gt2,gt2a);addC(gt2,gt2b);
+addC(gt2a,mkN("gt2a1","Kolya","Jr Dev","circle",C.gray,8,"galera"));
+addC(gt2a,mkN("gt2a2","Pasha","Jr Dev","circle",C.green,8,"galera"));
+var gt3a=mkN("gt3a","Liza","Sr Frontend","circle",C.green,9,"galera");
+addC(gt3,gt3a);
+addC(gt3a,mkN("gt3a1","Yura","React Dev","circle",C.cyan,8,"galera"));
+
+// Dept 4: Strategy
+var gs2=mkN("gal_strat","Strategy","Biz & Growth","triangle",C.green,16,"galera");
+addC(galera,gs2);
+var gs2a=mkN("gs2a","Elena CEO","CEO","circle",C.green,11,"galera");
+var gs2b=mkN("gs2b","Amir","CMO","circle",C.yellow,11,"galera");
+var gs2c=mkN("gs2c","Julia F.","CFO","circle",C.green,11,"galera");
+[gs2a,gs2b,gs2c].forEach(function(n){addC(gs2,n);});
+var gs2a1=mkN("gs2a1","Polina","Biz Dev","circle",C.green,9,"galera");
+var gs2a2=mkN("gs2a2","Rustam","Partnerships","circle",C.teal,9,"galera");
+addC(gs2a,gs2a1);addC(gs2a,gs2a2);
+addC(gs2a1,mkN("gs2a11","Anna K.","Analyst","circle",C.green,8,"galera"));
+addC(gs2a1,mkN("gs2a12","Petro","Analyst","circle",C.yellow,8,"galera"));
+var gs2b1=mkN("gs2b1","Masha","Growth","circle",C.green,9,"galera");
+var gs2b2=mkN("gs2b2","Kirill","Content","circle",C.yellow,9,"galera");
+addC(gs2b,gs2b1);addC(gs2b,gs2b2);
+addC(gs2b1,mkN("gs2b11","Tanya","SMM","star",C.cyan,8,"galera"));
+
 setLvl(root,1);
 
 // ===== STATE =====
@@ -1225,102 +1300,61 @@ function drawLines(dt){
 
   // ===== DRAW LABELS ON CANVAS =====
   var alertFilterActive = alertFilter !== null;
+  var FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 
-  // Collect visible nodes with screen positions
   var labelNodes = [];
   Object.values(nodeMap).forEach(function(n){
     if(!visN.has(n.id)) return;
     var np = proj(n.pos);
-    // Skip nodes outside screen (with margin)
-    if(np.x < -200 || np.x > W+200 || np.y < -100 || np.y > H+100) return;
+    if(np.x < -300 || np.x > W+300 || np.y < -100 || np.y > H+100) return;
     var sr = scrRad(n);
-    // Skip if too small to read (far away)
     if(sr < 2) return;
-
-    var filterAlpha = 1.0;
-    if(alertFilterActive){
-      filterAlpha = (n.alert && n.alert.type===alertFilter) ? 1.0 : 0.12;
-    }
-
-    // Spawn fade
+    var filterAlpha = alertFilterActive ? ((n.alert&&n.alert.type===alertFilter)?1.0:0.1) : 1.0;
     var spawnA = 1;
-    if(n.birthTime > 0){
-      var age = lastT - n.birthTime;
-      if(age < 0) return;
-      if(age < 0.4) spawnA = age / 0.4;
-    }
-    var alpha = spawnA * filterAlpha;
+    if(n.birthTime > 0){var age=lastT-n.birthTime;if(age<0)return;if(age<0.4)spawnA=age/0.4;}
+    var srAlpha = Math.max(0, Math.min(1, (sr-3)/5));
+    var alpha = spawnA * filterAlpha * srAlpha;
     if(alpha < 0.02) return;
-
-    // Font size: proportional to screen radius, clamped
-    // sr is the screen radius in pixels
-    var nameSize = Math.max(10, Math.min(16, sr * 1.05));
-    var roleSize = Math.max(8,  Math.min(12, sr * 0.72));
-
-    // Fade out text when node is tiny (zoomed out)
-    // Start fading at sr=8, fully invisible at sr=4
-    var srAlpha = Math.max(0, Math.min(1, (sr - 4) / 5));
-    alpha *= srAlpha;
-    if(alpha < 0.02) return;
-
-    labelNodes.push({n:n, np:np, sr:sr, alpha:alpha, nameSize:nameSize, roleSize:roleSize});
+    var nameSize = Math.max(10, Math.min(15, sr * 1.0));
+    var roleSize = Math.max(8,  Math.min(11, sr * 0.68));
+    labelNodes.push({n:n,np:np,sr:sr,alpha:alpha,nameSize:nameSize,roleSize:roleSize});
   });
+  labelNodes.sort(function(a,b){return b.n.pos.z-a.n.pos.z;});
 
-  // Sort back-to-front so closer nodes draw on top
-  labelNodes.sort(function(a,b){ return b.n.pos.z - a.n.pos.z; });
-
-  var FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
   labelNodes.forEach(function(item){
     var n=item.n, np=item.np, sr=item.sr;
     var nameSize=item.nameSize, roleSize=item.roleSize;
-
-    // Position: strictly above the node sprite top edge
-    var gap = Math.max(4, sr * 0.28);
-    var ty = np.y - sr - gap; // bottom of name text
-    var tx = np.x;
-
-    // Node color
     var ec = curMode===4 ? MONO : (effCol[n.id]||n.color);
     var rgb = h2r(ec);
-    var nameCol = curMode===4 ? "rgba(192,196,204,1)" : "rgba(232,237,248,1)";
-    var roleCol = "rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.9)";
-    var shadowCol = "rgba(0,0,0,0.9)";
+
+    // Place ABOVE node — gap scales with node size
+    var gap = sr + Math.max(6, sr * 0.3);
+    // name bottom edge is at np.y - gap
+    var nameY = np.y - gap;
+    var roleY = nameY - nameSize - 2;
+    var tx = np.x;
 
     lctx.save();
     lctx.globalAlpha = item.alpha;
     lctx.textAlign = "center";
-    lctx.textBaseline = "bottom";
 
-    // --- NAME ---
-    lctx.font = "600 "+nameSize+"px "+FONT;
-
-    // Measure to draw background pill for readability
-    var nw = lctx.measureText(n.label).width;
-    var pillPad = 4;
-    var pillX = tx - nw/2 - pillPad;
-    var pillY = ty - nameSize - pillPad;
-    var pillW = nw + pillPad*2;
-    var pillH = nameSize + pillPad*2;
-    lctx.fillStyle = "rgba(10,11,16,0.55)";
-    roundRect(lctx, pillX, pillY, pillW, pillH, 3);
-    lctx.fill();
-
-    // Name text
-    lctx.fillStyle = nameCol;
-    lctx.fillText(n.label, tx, ty);
-
-    // --- ROLE --- (immediately below name)
-    var ry = ty + roleSize + 2;
+    // ---- ROLE (smaller, on top) ----
     lctx.font = roleSize+"px "+FONT;
-    var rw = lctx.measureText(n.role).width;
-    // Small pill behind role
-    lctx.fillStyle = "rgba(10,11,16,0.45)";
-    roundRect(lctx, tx-rw/2-3, ry-roleSize-2, rw+6, roleSize+4, 3);
-    lctx.fill();
-
     lctx.textBaseline = "bottom";
-    lctx.fillStyle = roleCol;
-    lctx.fillText(n.role, tx, ry);
+    // shadow passes
+    lctx.fillStyle = "rgba(0,0,0,0.9)";
+    lctx.fillText(n.role, tx+1, roleY+1);
+    lctx.fillText(n.role, tx-1, roleY+1);
+    lctx.fillStyle = "rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.92)";
+    lctx.fillText(n.role, tx, roleY);
+
+    // ---- NAME (bigger, below role) ----
+    lctx.font = "600 "+nameSize+"px "+FONT;
+    lctx.fillStyle = "rgba(0,0,0,0.9)";
+    lctx.fillText(n.label, tx+1, nameY+1);
+    lctx.fillText(n.label, tx-1, nameY+1);
+    lctx.fillStyle = curMode===4 ? "rgba(200,205,212,1)" : "rgba(232,237,248,1)";
+    lctx.fillText(n.label, tx, nameY);
 
     lctx.restore();
   });

@@ -59,13 +59,13 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 .al-btn.que{color:#3a7ad0;border-color:#1a3a5a}
 .al-btn.ast{color:#80B932;border-color:#2a4a1a}
 .al-btn.clr{color:#E51000;border-color:#5a1a1a;font-size:11px}
-#fab{position:absolute;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#3a7ad0,#1a5ab0);border:none;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(58,122,208,0.4);font-size:22px;color:#fff;transition:all .18s}
-#fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(58,122,208,0.6)}
-#rst-btn{position:absolute;top:56px;right:16px;width:36px;height:36px;border-radius:50%;background:#1e2030;border:0.5px solid #3a3d50;cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.4);transition:all .18s;padding:0}
-#rst-btn:hover{background:#2a1a1a;border-color:#E51000;box-shadow:0 4px 18px rgba(229,16,0,0.3);transform:rotate(35deg)}
+#fab{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#3a7ad0,#1a5ab0);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:21px;color:#fff;transition:transform .18s;pointer-events:all;flex-shrink:0}
+#fab:hover{transform:scale(1.09)}
+#rst-btn{width:36px;height:36px;border-radius:50%;background:#1a1d26;border:0.5px solid #2e3140;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .22s;padding:0;pointer-events:all;flex-shrink:0}
+#rst-btn:hover{background:#251414;border-color:#E51000;transform:rotate(40deg)}
 #rst-btn img{width:18px;height:18px;opacity:0.6}
 #rst-btn:hover img{opacity:1}
-#save-ind{position:absolute;top:60px;right:58px;font-size:10px;color:#3a5a40;pointer-events:none;z-index:24;opacity:0;transition:opacity .5s}
+#save-ind{position:fixed;bottom:88px;right:66px;font-size:10px;color:#3a6a44;pointer-events:none;z-index:27;opacity:0;transition:opacity .5s;white-space:nowrap}
 #save-ind.show{opacity:1}
 #ov{position:absolute;inset:0;background:rgba(0,0,0,0.55);z-index:60;display:none;align-items:center;justify-content:center}
 #ov.open{display:flex}
@@ -90,6 +90,7 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
 .mb.cn:hover{background:#323544}
 .mb.ok{background:#3a7ad0;color:#fff}
 .mb.ok:hover{background:#4a8ae0}
+#ui-rail{position:fixed;right:0;top:46px;bottom:0;width:58px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;gap:12px;z-index:26;pointer-events:none}
 #lc{position:absolute;top:46px;left:0;pointer-events:none;z-index:1}
 #c{position:absolute;top:46px;left:0;display:block;z-index:2}
 /* RIGHT DETAIL PANEL */
@@ -192,7 +193,6 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
     <div class="ci-sep"></div>
     <div class="ci del" id="ci-del">🗑 Удалить</div>
   </div>
-  <button id="fab" onclick="openAdd(selId||'mixa')" title="Добавить к выбранному узлу">+</button>
   <!-- RIGHT DETAIL PANEL -->
   <div id="rpanel">
     <button id="rp-close" onclick="closeRPanel()">✕</button>
@@ -231,10 +231,14 @@ body{background:#12141a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
       </div>
     </div>
   </div>
-  <div id="save-ind">● сохранено</div>
-  <button id="rst-btn" onclick="resetAll()" title="Сбросить всё">
+  <!-- UI RAIL: reset + fab, fixed right edge -->
+  <div id="ui-rail">
+    <button id="rst-btn" onclick="resetAll()" title="Сбросить всё">
     <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48IS0tIFVwbG9hZGVkIHRvOiBTVkcgUmVwbywgd3d3LnN2Z3JlcG8uY29tLCBHZW5lcmF0b3I6IFNWRyBSZXBvIE1peGVyIFRvb2xzIC0tPgo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMjAsOCBDMTguNTk3NDAzNyw1LjA0MDMxMTcxIDE1LjUzNjk3MiwzIDEyLDMgQzcuMDI5NDM3MjUsMyAzLDcuMDI5NDM3MjUgMywxMiBDMywxNi45NzA1NjI3IDcuMDI5NDM3MjUsMjEgMTIsMjEgTDEyLDIxIEMxNi45NzA1NjI3LDIxIDIxLDE2Ljk3MDU2MjcgMjEsMTIgTTIxLDMgTDIxLDkgTDE1LDkiLz4KPC9zdmc+" alt="reset">
   </button>
+    <button id="fab" onclick="openAdd(selId||'mixa')" title="Добавить к выбранному">+</button>
+  </div>
+  <div id="save-ind">● сохранено</div>
   <div id="ov">
     <div id="mdl">
       <h3 id="mdl-t">Новый узел</h3>

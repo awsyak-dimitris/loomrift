@@ -577,14 +577,43 @@ function resolveCollisions(){
 }
 
 function calcPos(){
-  // Reset root position
-  var rootY=is2D?170:60;
-  nodeMap["mixa"].targetPos.set(0,rootY,0);
+  // Find ALL root nodes (parentId === null)
+  var roots = Object.values(nodeMap).filter(function(n){
+    return !n.parentId;
+  });
 
-  // Place entire tree
-  placeSubtree("mixa", 0, rootY, 0, 1, -Math.PI/2);
+  if(is2D){
+    // 2D: lay roots out horizontally, each with its own subtree below
+    var rootWidths = roots.map(function(r){ return getSubtreeWidth(r.id, 1) + 40; });
+    var totalW = rootWidths.reduce(function(a,b){return a+b;}, 0);
+    var x = -totalW/2;
+    roots.forEach(function(r, i){
+      var cx = x + rootWidths[i]/2;
+      placeSubtree(r.id, cx, 170, 0, 1, -Math.PI/2);
+      x += rootWidths[i];
+    });
+  } else {
+    // 3D: arrange roots in a circle or row, each subtree fans out independently
+    var n = roots.length;
+    roots.forEach(function(r, i){
+      var angle, cx, cy, cz;
+      if(n === 1){
+        cx=0; cy=60; cz=0; angle=-Math.PI/2;
+      } else {
+        // Space roots evenly around a wide arc
+        var spread = Math.min(Math.PI*1.8, n*0.9);
+        var a = -Math.PI/2 - spread/2 + (i/(n-1))*spread;
+        var dist = Math.max(320, n*90);
+        cx = Math.cos(a)*dist;
+        cy = 60;
+        cz = Math.sin(a)*dist*0.25;
+        angle = a; // subtree fans out from this angle
+      }
+      placeSubtree(r.id, cx, cy, cz, 1, angle);
+    });
+  }
 
-  // Resolve collisions after initial placement
+  // Resolve collisions between ALL visible nodes across all trees
   resolveCollisions();
 }
 
@@ -628,7 +657,10 @@ function buildSB(){
     if(n.children.length){var ch=document.createElement("div");ch.className="tc"+(sbExp.has(n.id)?"":" shut");n.children.forEach(function(c){ch.appendChild(mkRow(c,depth+1));});wrap.appendChild(ch);}
     return wrap;
   }
-  root2.appendChild(mkRow(nodeMap["mixa"],0));
+  // Show all root nodes
+  var roots2=Object.values(nodeMap).filter(function(n){return !n.parentId;});
+  roots2.sort(function(a,b){return a.id==="mixa"?-1:b.id==="mixa"?1:0;});
+  roots2.forEach(function(r){root2.appendChild(mkRow(r,0));});
 }
 // ===== RIGHT PANEL =====
 var rpId=null;
@@ -964,8 +996,8 @@ function loadState(){
     // Rebuild nodeMap from saved data
     var newMap={};
     Object.values(data.nodes).forEach(function(nd){
-      var n=mkN(nd.id,nd.label,nd.role,nd.shape||"circle",nd.color||0x554F56,nd.sz||11,nd.group||"mixa");
-      n.lvl=nd.lvl||1;n.parentId=nd.parentId||null;n.avatar=nd.avatar||null;n.alert=nd.alert||null;
+      var n=mkN(nd.id,nd.label,nd.role,nd.shape||"circle",nd.color||0x554F56,nd.sz||11,nd.group||nd.id);
+      n.lvl=nd.lvl||1;n.parentId=(nd.parentId===undefined||nd.parentId===null)? null : nd.parentId;n.avatar=nd.avatar||null;n.alert=nd.alert||null;
       newMap[n.id]=n;effCol[n.id]=nd.color||0x554F56;
     });
     // Restore children
@@ -1051,7 +1083,16 @@ function mkSprite(n){
   var hg=new THREE.PlaneGeometry(s+8,s+8);var hm=new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide,depthTest:false});
   var hmesh=new THREE.Mesh(hg,hm);hmesh.position.copy(n.pos);hmesh.userData={id:n.id};hmesh.renderOrder=3;scene.add(hmesh);hitO[n.id]=hmesh;
 }
-function rebuildEdges(){edgeData.length=0;visN.forEach(function(id){var n=nodeMap[id];if(!n||!n.parentId||!visN.has(n.parentId))return;edgeData.push({nid:n.id,pid:n.parentId,lvl:n.lvl});});}
+function rebuildEdges(){
+  edgeData.length=0;
+  visN.forEach(function(id){
+    var n=nodeMap[id];
+    if(!n||!n.parentId)return; // roots have no parent edge
+    if(!nodeMap[n.parentId])return; // parent must exist
+    if(!visN.has(n.parentId))return; // parent must be visible
+    edgeData.push({nid:n.id,pid:n.parentId,lvl:n.lvl});
+  });
+}
 function getAncs(id){var s=new Set();var c=nodeMap[id];while(c){s.add(c.id);c=c.parentId?nodeMap[c.parentId]:null;}return s;}
 function getDesc(id){var s=new Set([id]);function w(nid){var nd=nodeMap[nid];if(nd&&nd.children)nd.children.forEach(function(c){s.add(c.id);w(c.id);});}w(id);return s;}
 function rfx(id,isAct,colOvr){if(!sprO[id])return;invalidateTexCache(id);sprO[id].material.map=mkTex(nodeMap[id],isAct,colOvr);sprO[id].material.needsUpdate=true;}
@@ -1145,7 +1186,12 @@ function init(){
   try{ hadSave=loadState(); }catch(e){ console.warn("loadState failed:",e); hadSave=false; }
   // Ensure mixa always exists and is visible
   if(!nodeMap["mixa"]){ console.warn("mixa missing, using default"); hadSave=false; }
-  else { visN.add("mixa"); nodeMap["mixa"].opacity=1; }
+  else {
+    // Make all root nodes (parentId=null) visible
+    Object.values(nodeMap).forEach(function(n){
+      if(!n.parentId){ visN.add(n.id); n.opacity=1; }
+    });
+  }
   Object.values(nodeMap).forEach(mkSprite);
   if(hadSave){document.querySelectorAll(".tbtn").forEach(function(b,i){b.classList.toggle("active",i+1===curMode);});if(is2D){document.getElementById("viewBtn").textContent="🔮 3D";document.getElementById("viewBtn").classList.add("active");tSph.theta=0;tSph.phi=Math.PI/2;tSph.r=580;}}
   calcPos();rebuildEdges();scene.add(new THREE.AmbientLight(0xffffff,1));

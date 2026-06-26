@@ -1112,7 +1112,7 @@ function submitMdl(){
 }
 
 // ===== LOCALSTORAGE =====
-var SKEY="loomrift_v6",_svT=null,_svD=null;
+var SKEY="loomrift_v7",_svT=null,_svD=null;
 function scheduleSave(){clearTimeout(_svT);_svT=setTimeout(saveState,800);}
 function saveState(){
   try{
@@ -1185,9 +1185,19 @@ function mkTex(n,isAct,colOvr){
   var sk=n.shape==="hexagon"?"triangle":(n.shape==="main"?"main":n.shape);if(!ICONS[sk])sk="circle";
   var iurl=ICONS[sk][isAct?"a":"d"];var img2=imgC[iurl];
 
-  // Draw filled color background at 50% opacity first
-  ctx2.save();
-  ctx2.globalAlpha=0.48;
+  // Step 1: draw SVG icon (colored via source-in)
+  if(img2){
+    ctx2.drawImage(img2,0,0,sz2,sz2);
+    ctx2.globalCompositeOperation="source-in";
+    ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";
+    ctx2.fillRect(0,0,sz2,sz2);
+    ctx2.globalCompositeOperation="source-over";
+  } else {
+    ctx2.strokeStyle="rgba("+r+","+g+","+b+",1)";ctx2.lineWidth=4;
+    ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-6,0,Math.PI*2);ctx2.stroke();
+  }
+  // Step 2: overlay semi-transparent fill ON TOP of icon (source-over)
+  ctx2.globalAlpha=0.32;
   ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";
   if(sk==="circle"||sk==="main"){
     ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-4,0,Math.PI*2);ctx2.fill();
@@ -1199,19 +1209,7 @@ function mkTex(n,isAct,colOvr){
     var cx2=sz2/2,cy2=sz2/2,ro=sz2/2-5,ri=ro*0.42;
     ctx2.beginPath();for(var si=0;si<10;si++){var sa=-Math.PI/2+si*Math.PI/5,sr2=si%2===0?ro:ri;ctx2.lineTo(cx2+sr2*Math.cos(sa),cy2+sr2*Math.sin(sa));}ctx2.closePath();ctx2.fill();
   }
-  ctx2.restore();
-
-  // Draw SVG icon outline on top
-  if(img2){
-    ctx2.drawImage(img2,0,0,sz2,sz2);
-    ctx2.globalCompositeOperation="source-in";
-    ctx2.fillStyle="rgba("+r+","+g+","+b+",1)";
-    ctx2.fillRect(0,0,sz2,sz2);
-    ctx2.globalCompositeOperation="source-over";
-  } else {
-    ctx2.strokeStyle="rgba("+r+","+g+","+b+",1)";ctx2.lineWidth=4;
-    ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-6,0,Math.PI*2);ctx2.stroke();
-  }
+  ctx2.globalAlpha=1.0;
   return new THREE.CanvasTexture(cv2);
 }
 function invalidateTexCache(id){/* no-op */}

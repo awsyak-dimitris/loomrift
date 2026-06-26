@@ -1112,7 +1112,7 @@ function submitMdl(){
 }
 
 // ===== LOCALSTORAGE =====
-var SKEY="loomrift_v7",_svT=null,_svD=null;
+var SKEY="loomrift_v8",_svT=null,_svD=null;
 function scheduleSave(){clearTimeout(_svT);_svT=setTimeout(saveState,800);}
 function saveState(){
   try{
@@ -1173,7 +1173,7 @@ function mkTex(n,isAct,colOvr){
   var col=colOvr!==undefined?colOvr:(effCol[n.id]||n.color);
   var rgb=h2r(col),r=rgb[0],g=rgb[1],b=rgb[2];
   if(n.avatar){
-    if(!avC[n.id]||avC[n.id]._src!==n.avatar){var ai=new Image();ai.src=n.avatar;ai._src=n.avatar;avC[n.id]=ai;}
+    if(!avC[n.id]||avC[n.id]._src!==n.avatar){var aiNew=new Image();aiNew.src=n.avatar;aiNew._src=n.avatar;avC[n.id]=aiNew;}
     var ai=avC[n.id];
     ctx2.save();ctx2.beginPath();ctx2.arc(sz2/2,sz2/2,sz2/2-2,0,Math.PI*2);ctx2.clip();
     if(ai.complete&&ai.naturalWidth){ctx2.drawImage(ai,0,0,sz2,sz2);}
@@ -1337,7 +1337,7 @@ function handleClick(id){
 
 // ===== PRELOAD & INIT =====
 var toLoad=[];Object.values(ICONS).forEach(function(ic){toLoad.push(ic.d);toLoad.push(ic.a);});
-toLoad=[].concat.apply([],[...new Set(toLoad)]);
+toLoad=Array.from(new Set(toLoad));
 var loaded=0;
 toLoad.forEach(function(url){var img2=new Image();img2.onload=img2.onerror=function(){imgC[url]=img2.complete&&img2.naturalWidth?img2:null;loaded++;if(loaded===toLoad.length)init();};img2.src=url;});
 

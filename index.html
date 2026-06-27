@@ -351,35 +351,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
 
-// ===== PROJECTS VIEW =====
-function setNavActive(id){
-  document.querySelectorAll(".tb-nav-item").forEach(function(el){el.classList.remove("active");});
-  var el=document.getElementById(id);if(el)el.classList.add("active");
-}
-function showProjects(){
-  setNavActive("nav-projects");
-  // Collapse all — show only root nodes
-  expN.clear();
-  Object.values(nodeMap).forEach(function(n){
-    if(!n.parentId){visN.add(n.id);n.opacity=1;}
-    else{visN.delete(n.id);n.opacity=0;}
-  });
-  calcPos();rebuildEdges();applyMode(null);buildSB();
-  // Center camera and zoom out
-  tPan.set(0,60,0);tSph.r=350;
-}
-function showEverything(){
-  setNavActive("nav-everything");
-  // Expand first 2 levels
-  Object.values(nodeMap).filter(function(n){return !n.parentId;}).forEach(function(r){
-    expN.add(r.id);visN.add(r.id);r.opacity=1;
-    r.children.forEach(function(c){visN.add(c.id);nodeMap[c.id].opacity=1;nodeMap[c.id].birthTime=performance.now()/1000;expN.add(c.id);
-      c.children.forEach(function(gc){visN.add(gc.id);nodeMap[gc.id].opacity=1;nodeMap[gc.id].birthTime=performance.now()/1000;});
-    });
-  });
-  calcPos();rebuildEdges();applyMode(null);buildSB();
-  tPan.set(0,60,0);tSph.r=420;
-}
 </script>
 <script>
 var ICONS={
@@ -1241,6 +1212,34 @@ function animate(){
   });
   renderer.render(scene,camera);drawFrame(dt);
 }
+
+// ===== NAV: Projects / Groups / Everything =====
+function setNavActive(id){
+  document.querySelectorAll(".tb-nav-item").forEach(function(el){el.classList.remove("active");});
+  var el=document.getElementById(id);if(el)el.classList.add("active");
+}
+function showProjects(){
+  setNavActive("nav-projects");
+  expN.clear();
+  Object.values(nodeMap).forEach(function(n){
+    if(!n.parentId){visN.add(n.id);n.opacity=1;}
+    else{visN.delete(n.id);n.opacity=0;}
+  });
+  calcPos();rebuildEdges();applyMode(null);buildSB();
+  tPan.set(0,60,0);tSph.r=350;
+}
+function showEverything(){
+  setNavActive("nav-everything");
+  Object.values(nodeMap).filter(function(n){return !n.parentId;}).forEach(function(r){
+    expN.add(r.id);visN.add(r.id);r.opacity=1;
+    r.children.forEach(function(c){visN.add(c.id);nodeMap[c.id].opacity=1;nodeMap[c.id].birthTime=performance.now()/1000;expN.add(c.id);
+      c.children.forEach(function(gc){visN.add(gc.id);nodeMap[gc.id].opacity=1;nodeMap[gc.id].birthTime=performance.now()/1000;});
+    });
+  });
+  calcPos();rebuildEdges();applyMode(null);buildSB();
+  tPan.set(0,60,0);tSph.r=420;
+}
+
 </script>
 </body>
 </html>

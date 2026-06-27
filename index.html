@@ -313,6 +313,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
     <div class="ci" id="ci-move">✥ Сдвинуть</div>
     <div class="ci" id="ci-edit">✏️ Редактировать</div>
     <div class="ci" id="ci-add">+ Добавить</div>
+    <div class="ci-sep"></div>
+    <div class="ci-head">Цвет группы</div>
+    <div id="ci-gc-row" style="display:none;gap:4px;padding:4px 10px 6px;flex-wrap:wrap"></div>
     <div class="ci-sep"></div><div class="ci-head">Маркер</div>
     <div class="al-row"><button class="al-btn exc" id="ci-al-exc">!</button><button class="al-btn que" id="ci-al-que">?</button><button class="al-btn ast" id="ci-al-ast">★</button><button class="al-btn clr" id="ci-al-clr">✕</button></div>
     <div class="ci-sep"></div>
@@ -719,6 +722,26 @@ function showCtx(id,x,y){
   bind("ci-edit",function(){openEdit(id);});
   bind("ci-add",function(){openAdd(id);});
   bind("ci-del",function(){delNode(id);});
+  // Group color picker (only for root nodes)
+  var gcRow=document.getElementById("ci-gc-row");
+  if(gcRow){
+    if(!n.parentId){
+      gcRow.style.display="flex";
+      gcRow.innerHTML="";
+      Object.keys(GRP_COLORS).forEach(function(k){
+        var d=document.createElement("div");
+        d.style.cssText="width:22px;height:22px;border-radius:50%;cursor:pointer;background:#"+GRP_COLORS[k].toString(16).padStart(6,"0")+";transition:all 150ms;border:2px solid "+(GRP[n.group||n.id]===GRP_COLORS[k]?"#fff":"transparent");
+        d.onclick=function(ev){ev.stopPropagation();
+          GRP[n.group||n.id]=GRP_COLORS[k];
+          applyMode(null);scheduleSave();
+          document.getElementById("ctx").style.display="none";ctxId=null;
+        };
+        gcRow.appendChild(d);
+      });
+    } else {
+      gcRow.style.display="none";
+    }
+  }
   ["exc","que","ast"].forEach(function(t){bind("ci-al-"+t,function(){var ex=(n.alert&&n.alert.type===t)?n.alert.text:"";var txt=window.prompt((AL[t].label)+" — текст:",ex||"");if(txt===null)return;n.alert={type:t,text:txt.trim()};scheduleSave();buildSB();});});
   bind("ci-al-clr",function(){n.alert=null;scheduleSave();buildSB();});
   ["exc","que","ast"].forEach(function(t){var el=document.getElementById("ci-al-"+t);if(el)el.style.boxShadow=(n.alert&&n.alert.type===t)?"0 0 0 1.5px "+AL[t].col:"none";});

@@ -1045,7 +1045,7 @@ function buildPath(id){
 }
 function handleClick(id){
   lastCId=id;selId=id;revealInSB(id);openRP(id);
-  var n=nodeMap[id];
+  var n=nodeMap[id];tPan.set(n.targetPos.x,n.targetPos.y,0);
   if(curMode===3){var grp=n.group;if(grp){if(hlGrp.has(grp))hlGrp.delete(grp);else hlGrp.add(grp);}toggleNode(id);applyMode(null);}
   else{toggleNode(id);applyMode(curMode===2?id:null);}
   var atBottom=!n.children.length||(expN.has(id)&&n.children.every(function(c){return expN.has(c.id)||!c.children.length;}));
@@ -1296,7 +1296,7 @@ function animate(){
   var now=performance.now()/1000,dt=Math.min(now-lastT,.05);lastT=now;
   if(is2D){tSph.theta=0;tSph.phi=Math.PI/2;}
   sph.theta+=(tSph.theta-sph.theta)*.07;sph.phi+=(tSph.phi-sph.phi)*.07;sph.r+=(tSph.r-sph.r)*.07;
-  panOff.lerp(tPan,.09);
+  panOff.lerp(tPan,.14);
   var cp=s2c(sph,panOff);camera.position.copy(cp);camera.lookAt(panOff.x,panOff.y,0);camera.up.set(0,1,0);
   if(selId&&visN.has(selId)){
     if(pulAct){pulPh+=dt/PDUL;if(pulPh>=1){pulPh=1;pulAct=false;pulPause=PPAUSE;}}

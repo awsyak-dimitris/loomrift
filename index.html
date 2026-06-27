@@ -519,8 +519,8 @@ function placeTree(id,cx,cy,cz,depth,pAngle){
     var x=-tw/2;var ys=-(70+n.sz*1.4);
     kids.forEach(function(c,i){placeTree(c.id,cx+x+ws[i]/2,cy+ys,0,depth+1,0);x+=ws[i]+8;});
   } else {
-    var RADII=[0,200,140,95,68,50,38];
-    var SPREADS=[0,1.5*Math.PI,1.2*Math.PI,1.0*Math.PI,0.85*Math.PI,0.7*Math.PI,0.6*Math.PI];
+    var RADII=[0,240,160,110,75,55,42];
+    var SPREADS=[0,1.6*Math.PI,1.3*Math.PI,1.1*Math.PI,0.9*Math.PI,0.75*Math.PI,0.6*Math.PI];
     var YDROPS=[0,-72,-62,-52,-42,-34,-26];
     var ZFACS=[0,0.45,0.35,0.25,0.16,0.1,0.05];
     var r=RADII[Math.min(depth,6)];
@@ -536,10 +536,10 @@ function placeTree(id,cx,cy,cz,depth,pAngle){
 }
 function resolveCollisions(){
   var ns2=Object.values(nodeMap).filter(function(n){return visN.has(n.id);});
-  for(var it=0;it<5;it++){
+  for(var it=0;it<8;it++){
     for(var i=0;i<ns2.length;i++){for(var j=i+1;j<ns2.length;j++){
       var a=ns2[i],b=ns2[j];
-      var minD=(a.sz+b.sz)*0.6+20;
+      var minD=(a.sz+b.sz)*0.7+28;
       var dx=b.targetPos.x-a.targetPos.x,dy=b.targetPos.y-a.targetPos.y,dz=b.targetPos.z-a.targetPos.z;
       var d2=dx*dx+dy*dy+dz*dz;
       if(d2<minD*minD&&d2>0.0001){
@@ -562,7 +562,7 @@ function calcPos(){
     roots.forEach(function(r,i){
       var cx,cy=60,cz,angle;
       if(n2===1){cx=0;cz=0;angle=-Math.PI/2;}
-      else{var sp=Math.min(Math.PI*1.8,n2*0.9),a=(-Math.PI/2)-sp/2+(i/(n2-1))*sp,dist=Math.max(320,n2*90);cx=Math.cos(a)*dist;cz=Math.sin(a)*dist*0.25;angle=a;}
+      else{var sp=Math.min(Math.PI*1.8,n2*0.7),a=(-Math.PI/2)-sp/2+(i/(n2-1))*sp,dist=Math.max(400,n2*120);cx=Math.cos(a)*dist;cz=Math.sin(a)*dist*0.25;angle=a;}
       placeTree(r.id,cx,cy,cz,1,angle);
     });
   }

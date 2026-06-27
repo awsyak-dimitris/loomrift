@@ -1198,6 +1198,57 @@ function drawFrame(dt){
     lctx.save();var grd=lctx.createRadialGradient(dp.x,dp.y,0,dp.x,dp.y,dR*4);grd.addColorStop(0,"rgba("+pr+","+pg+","+pb+","+(flk*0.4)+")");grd.addColorStop(1,"rgba("+pr+","+pg+","+pb+",0)");lctx.fillStyle=grd;lctx.beginPath();lctx.arc(dp.x,dp.y,dR*4,0,Math.PI*2);lctx.fill();lctx.fillStyle="rgba("+pr+","+pg+","+pb+","+(0.7+flk*0.3)+")";lctx.beginPath();lctx.arc(dp.x,dp.y,dR,0,Math.PI*2);lctx.fill();lctx.fillStyle="rgba(255,255,255,"+(0.7+flk*0.3)+")";lctx.beginPath();lctx.arc(dp.x,dp.y,dR*0.4,0,Math.PI*2);lctx.fill();lctx.restore();
     if(pathPts.length){var s0=pathPts[0];lctx.save();lctx.strokeStyle="rgba("+pr+","+pg+","+pb+",0.5)";lctx.lineWidth=1.5;lctx.beginPath();lctx.arc(s0.x,s0.y,5,0,Math.PI*2);lctx.stroke();lctx.restore();var sE=pathPts[pathPts.length-1];lctx.save();lctx.strokeStyle="rgba("+pr+","+pg+","+pb+","+(0.6+flk*0.3)+")";lctx.lineWidth=2;lctx.beginPath();lctx.arc(sE.x,sE.y,6+flk*4,0,Math.PI*2);lctx.stroke();lctx.restore();}
   }
+  // NODE OUTLINES — always visible stroke ring
+  Object.values(nodeMap).forEach(function(n){
+    if(!visN.has(n.id))return;
+    var np=proj(n.pos),sr=scrRad(n);
+    if(sr<3||np.x<-100||np.x>W+100||np.y<-100||np.y>H+100)return;
+    var spawnA=1;if(n.birthTime>0){var age=lastT-n.birthTime;if(age<0)return;if(age<0.4)spawnA=age/0.4;}
+    var ec=curMode===4?MONO:(effCol[n.id]||n.color);
+    var rgb=h2r(ec);
+    var flt=alertFilter===null?1:((n.alert&&n.alert.type===alertFilter)?1:0.06);
+    lctx.save();
+    lctx.globalAlpha=0.35*spawnA*flt;
+    lctx.strokeStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",1)";
+    lctx.lineWidth=Math.max(1.2,sr*0.06);
+    var outR=sr+Math.max(3,sr*0.15);
+    lctx.beginPath();lctx.arc(np.x,np.y,outR,0,Math.PI*2);lctx.stroke();
+    lctx.restore();
+  });
+
+  // ROOT PULSE — subtle glow ring every 5 seconds on active root
+  if(selId){
+    var selNode=nodeMap[selId];
+    var activeRoot=selNode;
+    while(activeRoot&&activeRoot.parentId)activeRoot=nodeMap[activeRoot.parentId];
+    if(activeRoot&&visN.has(activeRoot.id)){
+      var rp=proj(activeRoot.pos),rsr=scrRad(activeRoot);
+      if(rsr>3){
+        var pulseT=(lastT%5.0)/5.0;
+        var pulseAlpha=0;
+        if(pulseT<0.3){
+          var p=pulseT/0.3;
+          pulseAlpha=Math.sin(p*Math.PI)*0.25;
+        }
+        if(pulseAlpha>0.01){
+          var rec=curMode===4?MONO:(effCol[activeRoot.id]||activeRoot.color);
+          var rrgb=h2r(rec);
+          var pulseR=rsr+8+pulseT*rsr*0.6;
+          lctx.save();
+          lctx.globalAlpha=pulseAlpha;
+          lctx.strokeStyle="rgba("+rrgb[0]+","+rrgb[1]+","+rrgb[2]+",1)";
+          lctx.lineWidth=Math.max(1.5,rsr*0.04);
+          lctx.beginPath();lctx.arc(rp.x,rp.y,pulseR,0,Math.PI*2);lctx.stroke();
+          // Soft glow
+          lctx.globalAlpha=pulseAlpha*0.3;
+          lctx.lineWidth=Math.max(4,rsr*0.12);
+          lctx.beginPath();lctx.arc(rp.x,rp.y,pulseR,0,Math.PI*2);lctx.stroke();
+          lctx.restore();
+        }
+      }
+    }
+  }
+
   // Alert badges
   Object.values(nodeMap).forEach(function(n){
     if(!n.alert||!visN.has(n.id))return;var at=AL[n.alert.type];if(!at)return;

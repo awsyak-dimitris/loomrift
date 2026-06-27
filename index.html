@@ -209,9 +209,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
 @keyframes th{from{transform:scale(0);opacity:1}to{transform:scale(1.5);opacity:0}}
 
 /* ── ZOOM CONTROLS ── */
-#zoom-ctrl{position:fixed;left:6px;bottom:90px;display:flex;flex-direction:column;gap:4px;z-index:26;pointer-events:all}
-.zoom-btn{width:36px;height:36px;border-radius:var(--r-btn);background:rgba(15,17,24,.8);backdrop-filter:blur(8px);border:1px solid var(--border);color:var(--fg3);font:600 18px var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--dur-fast)}
-.zoom-btn:hover{background:var(--hover);color:var(--fg)}
+
+.zoom-btn{width:34px;height:34px;border-radius:50%;background:var(--elevated);border:1px solid var(--border);color:var(--fg3);font:600 16px var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--dur-fast);pointer-events:all;flex-shrink:0}
+.zoom-btn:hover{background:var(--hover);color:var(--fg);border-color:#2a3444}
 
 @media(max-width:640px){
   #topbar{height:44px}
@@ -336,16 +336,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
 
   <!-- UI RAIL -->
   <div id="ui-rail">
+    <button class="zoom-btn" onclick="tSph.r=Math.max(80,tSph.r-40)" title="Приблизить">+</button>
+    <button class="zoom-btn" onclick="tSph.r=Math.min(1200,tSph.r+40)" title="Отдалить">−</button>
     <button id="rst-btn" onclick="resetAll()" title="Сбросить"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48IS0tIFVwbG9hZGVkIHRvOiBTVkcgUmVwbywgd3d3LnN2Z3JlcG8uY29tLCBHZW5lcmF0b3I6IFNWRyBSZXBvIE1peGVyIFRvb2xzIC0tPgo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMjAsOCBDMTguNTk3NDAzNyw1LjA0MDMxMTcxIDE1LjUzNjk3MiwzIDEyLDMgQzcuMDI5NDM3MjUsMyAzLDcuMDI5NDM3MjUgMywxMiBDMywxNi45NzA1NjI3IDcuMDI5NDM3MjUsMjEgMTIsMjEgTDEyLDIxIEMxNi45NzA1NjI3LDIxIDIxLDE2Ljk3MDU2MjcgMjEsMTIgTTIxLDMgTDIxLDkgTDE1LDkiLz4KPC9zdmc+" alt="r"></button>
     <button id="fab" onclick="openNewRoot()" title="Новый узел">+</button>
   </div>
   <div id="save-ind">● сохранено</div>
 
-  <!-- ZOOM CONTROLS -->
-  <div id="zoom-ctrl">
-    <button class="zoom-btn" onclick="tSph.r=Math.max(80,tSph.r-40)">+</button>
-    <button class="zoom-btn" onclick="tSph.r=Math.min(1200,tSph.r+40)">−</button>
-  </div>
+
 
   <canvas id="lc"></canvas>
   <canvas id="c"></canvas>
@@ -1059,6 +1057,9 @@ var ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
 var tip=document.getElementById("tooltip"),alTip=document.getElementById("alert-tip"),lastT=performance.now()/1000;
 
 window.addEventListener("keydown",function(e){
+  // Skip ALL shortcuts when typing in input/select/textarea
+  var tag=document.activeElement?document.activeElement.tagName:"";
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
   if(e.code==="Space"){spDown=true;tPan.y+=tSph.r/100;e.preventDefault();}
   if(e.code==="ControlLeft"||e.code==="ControlRight"){tPan.y-=tSph.r/100;e.preventDefault();}
   var camSpeed=tSph.r/100;
@@ -1067,7 +1068,11 @@ window.addEventListener("keydown",function(e){
   if(e.code==="KeyW"||e.code==="ArrowUp"){tSph.r=Math.max(80,tSph.r-camSpeed*2);e.preventDefault();}
   if(e.code==="KeyS"||e.code==="ArrowDown"){tSph.r=Math.min(1200,tSph.r+camSpeed*2);e.preventDefault();}
 });
-window.addEventListener("keyup",function(e){if(e.code==="Space")spDown=false;});
+window.addEventListener("keyup",function(e){
+  var tag=document.activeElement?document.activeElement.tagName:"";
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
+  if(e.code==="Space")spDown=false;
+});
 canvas.addEventListener("mousedown",function(e){moved=false;lastX=e.clientX;lastY=e.clientY;if(e.button===1){isPan=true;e.preventDefault();}else if(e.button===0){if(spDown||is2D)isPan=true;else isDrag=true;}canvas.style.cursor=isPan?"move":"grabbing";});
 window.addEventListener("mouseup",function(){isDrag=false;isPan=false;canvas.style.cursor=spDown||is2D?"move":"grab";});
 window.addEventListener("mousemove",function(e){
@@ -1211,37 +1216,6 @@ function animate(){
     if(hm&&vis){hm.position.copy(n.pos);hm.quaternion.copy(camera.quaternion);}
   });
   renderer.render(scene,camera);drawFrame(dt);
-}
-
-
-// ===== PROJECTS VIEW =====
-function setNavActive(id){
-  document.querySelectorAll(".tb-nav-item").forEach(function(el){el.classList.remove("active");});
-  var el=document.getElementById(id);if(el)el.classList.add("active");
-}
-function showProjects(){
-  setNavActive("nav-projects");
-  // Collapse all — show only root nodes
-  expN.clear();
-  Object.values(nodeMap).forEach(function(n){
-    if(!n.parentId){visN.add(n.id);n.opacity=1;}
-    else{visN.delete(n.id);n.opacity=0;}
-  });
-  calcPos();rebuildEdges();applyMode(null);buildSB();
-  // Center camera and zoom out
-  tPan.set(0,60,0);tSph.r=350;
-}
-function showEverything(){
-  setNavActive("nav-everything");
-  // Expand first 2 levels
-  Object.values(nodeMap).filter(function(n){return !n.parentId;}).forEach(function(r){
-    expN.add(r.id);visN.add(r.id);r.opacity=1;
-    r.children.forEach(function(c){visN.add(c.id);nodeMap[c.id].opacity=1;nodeMap[c.id].birthTime=performance.now()/1000;expN.add(c.id);
-      c.children.forEach(function(gc){visN.add(gc.id);nodeMap[gc.id].opacity=1;nodeMap[gc.id].birthTime=performance.now()/1000;});
-    });
-  });
-  calcPos();rebuildEdges();applyMode(null);buildSB();
-  tPan.set(0,60,0);tSph.r=420;
 }
 </script>
 </body>

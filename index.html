@@ -330,6 +330,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
     <div class="fl"><label>Роль</label><input id="fi-r" placeholder="Designer"/></div>
     <div class="fl"><label>Форма</label><select id="fi-s"><option value="circle">● Круг</option><option value="triangle">▲ Треугольник</option><option value="star">★ Звезда</option><option value="square">■ Квадрат</option></select></div>
     <div class="fl"><label>Статус</label><select id="fi-c"><option value="green">🟢 Активно</option><option value="yellow">🟡 Внимание</option><option value="red">🔴 Критично</option><option value="gray">⚫ Холд</option></select></div>
+    <div class="fl" id="fi-gc-wrap" style="display:none"><label>Цвет группы</label><div id="fi-gc" style="display:flex;gap:8px;padding:6px 0;flex-wrap:wrap"></div></div>
     <div class="fl"><label>Фото <span>(опционально)</span></label><div id="av-drop" onclick="document.getElementById('fi-img').click()"><div id="av-prev"><span id="av-ph">📷 Нажмите или перетащите</span></div><input type="file" id="fi-img" accept="image/*" style="display:none"></div><div id="av-acts"><button type="button" class="av-clr" onclick="clearAv()">✕ Убрать</button></div></div>
     <div class="fl" id="fi-pw"><label>Родитель</label><select id="fi-p"></select></div>
     <div class="mbs"><button class="mb cn" onclick="closeMdl()">Отмена</button><button class="mb ok" id="mdl-ok" onclick="submitMdl()">Создать</button></div>
@@ -769,6 +770,7 @@ function cropConfirm(){
   document.getElementById("crop-ov").classList.remove("open");
 }
 document.addEventListener("DOMContentLoaded",function(){
+  buildGrpPicker();
   var fi=document.getElementById("fi-img");
   if(fi)fi.addEventListener("change",function(e){if(e.target.files[0]){var rd=new FileReader();rd.onload=function(ev){openCrop(ev.target.result);};rd.readAsDataURL(e.target.files[0]);}});
   var drop=document.getElementById("av-drop");
@@ -792,6 +794,13 @@ document.addEventListener("DOMContentLoaded",function(){
 
 // ===== MODAL =====
 var mdlMode="add",mdlTgt=null;
+var selGrpColor="blue";
+var GRP_COLORS={blue:C.blue,green:C.green,orange:C.orange,purple:C.purple,cyan:C.cyan,teal:C.teal,red:C.red,yellow:C.yellow};
+var GRP_COLOR_NAMES={blue:"#4FA7FF",green:"#75FF52",orange:"#FFC34D",purple:"#8B5CF6",cyan:"#1ab8d0",teal:"#1ab89a",red:"#E51000",yellow:"#EFC44E"};
+function setGrpColor(key){selGrpColor=key;var btns=document.querySelectorAll(".gc-dot");btns.forEach(function(b){b.style.outline=b.dataset.gc===key?"2px solid #fff":"none";b.style.outlineOffset="2px";});}
+function setGrpColorByVal(val){var found="blue";Object.keys(GRP_COLORS).forEach(function(k){if(GRP_COLORS[k]===val)found=k;});setGrpColor(found);}
+function buildGrpPicker(){var wrap=document.getElementById("fi-gc");if(!wrap)return;wrap.innerHTML="";Object.keys(GRP_COLORS).forEach(function(k){var d=document.createElement("div");d.className="gc-dot";d.dataset.gc=k;d.style.cssText="width:24px;height:24px;border-radius:50%;cursor:pointer;background:"+GRP_COLOR_NAMES[k]+";transition:all 150ms;flex-shrink:0";d.onclick=function(){setGrpColor(k);};wrap.appendChild(d);});}
+
 function openNewRoot(){
   mdlMode="newroot";mdlTgt=null;
   document.getElementById("mdl-t").textContent="Новый главный узел";
@@ -799,8 +808,13 @@ function openNewRoot(){
   document.getElementById("fi-s").value="circle";document.getElementById("fi-c").value="green";
   document.getElementById("fi-et").value="org";
   document.getElementById("fi-pw").style.display="none";
+  var isRoot=!nodeMap[id].parentId;
+  document.getElementById("fi-gc-wrap").style.display=isRoot?"":"none";
+  if(isRoot){var gc=GRP[nodeMap[id].group]||GRP[nodeMap[id].id]||C.green;setGrpColorByVal(gc);}
+  document.getElementById("fi-gc-wrap").style.display="";
   document.getElementById("mdl-ok").textContent="Создать";clearAv();
   document.getElementById("ov").classList.add("open");
+  setGrpColor("blue");
   setTimeout(function(){document.getElementById("fi-n").focus();},80);
 }
 function openAdd(parentId){
@@ -818,6 +832,7 @@ function openAdd(parentId){
     if(n.id===parentId)o.selected=true;sel.appendChild(o);
   });
   document.getElementById("mdl-ok").textContent="Создать";clearAv();
+  document.getElementById("fi-gc-wrap").style.display="none";
   document.getElementById("ov").classList.add("open");
   setTimeout(function(){document.getElementById("fi-n").focus();},80);
 }
@@ -830,6 +845,9 @@ function openEdit(id){
   var ck="gray";Object.entries({green:C.green,yellow:C.yellow,red:C.red,gray:C.gray}).forEach(function(e2){if(e2[1]===n.color)ck=e2[0];});
   document.getElementById("fi-c").value=ck;
   document.getElementById("fi-pw").style.display="none";
+  var isRoot=!nodeMap[id].parentId;
+  document.getElementById("fi-gc-wrap").style.display=isRoot?"":"none";
+  if(isRoot){var gc=GRP[nodeMap[id].group]||GRP[nodeMap[id].id]||C.green;setGrpColorByVal(gc);}
   document.getElementById("mdl-ok").textContent="Сохранить";
   if(n.avatar)setAvPrev(n.avatar);else clearAv();
   document.getElementById("ov").classList.add("open");
@@ -848,7 +866,9 @@ function submitMdl(){
   }
   if(mdlMode==="edit"){
     var n=nodeMap[mdlTgt];n.label=name;n.role=role;n.shape=shape;n.color=col;
-    STM[n.id]=document.getElementById("fi-c").value;applyExtra(n);effCol[n.id]=col;
+    STM[n.id]=document.getElementById("fi-c").value;
+    // Update group color if root node
+    if(!n.parentId){GRP[n.group||n.id]=GRP_COLORS[selGrpColor]||C.blue;}applyExtra(n);effCol[n.id]=col;
     if(sprO[n.id]){sprO[n.id].material.map=mkTex(n,false);sprO[n.id].material.needsUpdate=true;}
   } else {
     var parId=document.getElementById("fi-p").value||"mixa";var par=nodeMap[parId]||nodeMap["mixa"];
@@ -868,7 +888,7 @@ function saveState(){
   try{
     var nodes={};
     Object.values(nodeMap).forEach(function(n){nodes[n.id]={id:n.id,label:n.label,role:n.role,shape:n.shape,color:n.color,sz:n.sz,group:n.group,lvl:n.lvl,parentId:n.parentId,childIds:n.children.map(function(c){return c.id;}),avatar:n.avatar||null,alert:n.alert||null,entityType:n.entityType||"person",phone:n.phone||"",email:n.email||"",telegram:n.telegram||"",instagram:n.instagram||"",linkedin:n.linkedin||"",birthday:n.birthday||"",location:n.location||"",bio:n.bio||"",website:n.website||"",industry:n.industry||"",teamSize:n.teamSize||"",founded:n.founded||"",aiSummary:n.aiSummary||"",aiSummaryDate:n.aiSummaryDate||""};});
-    localStorage.setItem(SKEY,JSON.stringify({nodes:nodes,expanded:Array.from(expN),visible:Array.from(visN),mode:curMode,is2D:is2D,uidC:uidC,stm:STM}));
+    localStorage.setItem(SKEY,JSON.stringify({nodes:nodes,expanded:Array.from(expN),visible:Array.from(visN),mode:curMode,is2D:is2D,uidC:uidC,stm:STM,grp:GRP}));
     var ind=document.getElementById("save-ind");if(ind){ind.classList.add("show");clearTimeout(_svD);_svD=setTimeout(function(){ind.classList.remove("show");},1800);}
   }catch(e){console.warn("Save error",e);}
 }

@@ -1178,8 +1178,8 @@ function drawFrame(dt){
   labelNodes.forEach(function(item){
     var n=item.n,np=item.np,sr=item.sr;
     var ec=curMode===4?MONO:(effCol[n.id]||n.color);var rgb=h2r(ec);
-    var gap=sr+Math.max(6,sr*0.28);
-    var nameY=np.y-gap;var roleY=nameY-item.ns-2;var tx=np.x;
+    var gap=sr+Math.max(10,sr*0.45);
+    var nameY=np.y-gap;var roleY=nameY-item.ns-3;var tx=np.x;
     lctx.save();lctx.globalAlpha=item.alpha;lctx.textAlign="center";
     lctx.font=item.rs+"px "+FONT;lctx.textBaseline="bottom";
     lctx.fillStyle="rgba(0,0,0,0.85)";lctx.fillText(n.role,tx+1,roleY+1);

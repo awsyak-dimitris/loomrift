@@ -799,7 +799,7 @@ var GRP_COLORS={blue:C.blue,green:C.green,orange:C.orange,purple:C.purple,cyan:C
 var GRP_COLOR_NAMES={blue:"#4FA7FF",green:"#75FF52",orange:"#FFC34D",purple:"#8B5CF6",cyan:"#1ab8d0",teal:"#1ab89a",red:"#E51000",yellow:"#EFC44E"};
 function setGrpColor(key){selGrpColor=key;var btns=document.querySelectorAll(".gc-dot");btns.forEach(function(b){b.style.outline=b.dataset.gc===key?"2px solid #fff":"none";b.style.outlineOffset="2px";});}
 function setGrpColorByVal(val){var found="blue";Object.keys(GRP_COLORS).forEach(function(k){if(GRP_COLORS[k]===val)found=k;});setGrpColor(found);}
-function buildGrpPicker(){var wrap=document.getElementById("fi-gc");if(!wrap)return;wrap.innerHTML="";Object.keys(GRP_COLORS).forEach(function(k){var d=document.createElement("div");d.className="gc-dot";d.dataset.gc=k;d.style.cssText="width:24px;height:24px;border-radius:50%;cursor:pointer;background:"+GRP_COLOR_NAMES[k]+";transition:all 150ms;flex-shrink:0";d.onclick=function(){setGrpColor(k);};wrap.appendChild(d);});}
+function buildGrpPicker(){var wrap=document.getElementById("fi-gc");if(!wrap){console.log("fi-gc not found");return;}wrap.innerHTML="";Object.keys(GRP_COLORS).forEach(function(k){var d=document.createElement("div");d.className="gc-dot";d.dataset.gc=k;d.style.cssText="width:24px;height:24px;border-radius:50%;cursor:pointer;background:"+GRP_COLOR_NAMES[k]+";transition:all 150ms;flex-shrink:0";d.onclick=function(){setGrpColor(k);};wrap.appendChild(d);});}
 
 function openNewRoot(){
   mdlMode="newroot";mdlTgt=null;
@@ -808,15 +808,13 @@ function openNewRoot(){
   document.getElementById("fi-s").value="circle";document.getElementById("fi-c").value="green";
   document.getElementById("fi-et").value="org";
   document.getElementById("fi-pw").style.display="none";
-  var isRoot=!nodeMap[id].parentId;
-  document.getElementById("fi-gc-wrap").style.display=isRoot?"":"none";
-  if(isRoot){var gc=GRP[nodeMap[id].group]||GRP[nodeMap[id].id]||C.green;setGrpColorByVal(gc);}
-  document.getElementById("fi-gc-wrap").style.display="";
+  var gcw=document.getElementById("fi-gc-wrap");if(gcw)gcw.style.display="";
   document.getElementById("mdl-ok").textContent="Создать";clearAv();
-  document.getElementById("ov").classList.add("open");
   setGrpColor("blue");
+  document.getElementById("ov").classList.add("open");
   setTimeout(function(){document.getElementById("fi-n").focus();},80);
 }
+
 function openAdd(parentId){
   mdlMode="add";mdlTgt=parentId;
   document.getElementById("mdl-t").textContent="Новый узел";
@@ -824,6 +822,7 @@ function openAdd(parentId){
   document.getElementById("fi-s").value="circle";document.getElementById("fi-c").value="green";
   document.getElementById("fi-et").value="person";
   document.getElementById("fi-pw").style.display="";
+  var gcwA=document.getElementById("fi-gc-wrap");if(gcwA)gcwA.style.display="none";
   var sel=document.getElementById("fi-p");sel.innerHTML="";
   var oNew=document.createElement("option");oNew.value="__newroot__";oNew.textContent="✦ Создать новый главный узел";sel.appendChild(oNew);
   var oSep=document.createElement("option");oSep.disabled=true;oSep.textContent="──────────────";sel.appendChild(oSep);
@@ -832,7 +831,6 @@ function openAdd(parentId){
     if(n.id===parentId)o.selected=true;sel.appendChild(o);
   });
   document.getElementById("mdl-ok").textContent="Создать";clearAv();
-  document.getElementById("fi-gc-wrap").style.display="none";
   document.getElementById("ov").classList.add("open");
   setTimeout(function(){document.getElementById("fi-n").focus();},80);
 }
@@ -845,14 +843,15 @@ function openEdit(id){
   var ck="gray";Object.entries({green:C.green,yellow:C.yellow,red:C.red,gray:C.gray}).forEach(function(e2){if(e2[1]===n.color)ck=e2[0];});
   document.getElementById("fi-c").value=ck;
   document.getElementById("fi-pw").style.display="none";
-  var isRoot=!nodeMap[id].parentId;
-  document.getElementById("fi-gc-wrap").style.display=isRoot?"":"none";
-  if(isRoot){var gc=GRP[nodeMap[id].group]||GRP[nodeMap[id].id]||C.green;setGrpColorByVal(gc);}
+  var isRoot=!n.parentId;
+  var gcw=document.getElementById("fi-gc-wrap");if(gcw)gcw.style.display=isRoot?"":"none";
+  if(isRoot){var gc=GRP[n.group]||GRP[n.id]||C.green;setGrpColorByVal(gc);}
   document.getElementById("mdl-ok").textContent="Сохранить";
   if(n.avatar)setAvPrev(n.avatar);else clearAv();
   document.getElementById("ov").classList.add("open");
   setTimeout(function(){document.getElementById("fi-n").focus();},80);
 }
+
 function closeMdl(){document.getElementById("ov").classList.remove("open");document.getElementById("fi-pw").style.display="";}
 function submitMdl(){
   var name=document.getElementById("fi-n").value.trim();if(!name)return;

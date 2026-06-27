@@ -847,13 +847,14 @@ function submitMdl(){
     var nid=uid();var nr=mkN(nid,name,role,shape,col,42,nid);nr.lvl=1;nr.parentId=null;nr.opacity=1;nr.birthTime=performance.now()/1000;applyExtra(nr);nodeMap[nid]=nr;effCol[nid]=col;STM[nid]="green";var ang=Math.random()*Math.PI*2,dst=300+Math.random()*150;nr.targetPos.set(Math.cos(ang)*dst,40,Math.sin(ang)*dst*0.25);nr.pos.copy(nr.targetPos);mkSprite(nr);visN.add(nid);applyMode(null);buildSB();scheduleSave();closeMdl();selId=nid;lastCId=nid;openRP(nid);return;
   }
   if(mdlMode==="edit"){
-    var n=nodeMap[mdlTgt];n.label=name;n.role=role;n.shape=shape;n.color=col;applyExtra(n);effCol[n.id]=col;
+    var n=nodeMap[mdlTgt];n.label=name;n.role=role;n.shape=shape;n.color=col;
+    STM[n.id]=document.getElementById("fi-c").value;applyExtra(n);effCol[n.id]=col;
     if(sprO[n.id]){sprO[n.id].material.map=mkTex(n,false);sprO[n.id].material.needsUpdate=true;}
   } else {
     var parId=document.getElementById("fi-p").value||"mixa";var par=nodeMap[parId]||nodeMap["mixa"];
     var lvl=par.lvl+1,sz2=lvl<=2?18:lvl===3?14:lvl<=4?11:9,grp=par.group||"mixa";
     var newN=mkN(uid(),name,role,shape,col,sz2,grp);newN.lvl=lvl;newN.parentId=par.id;applyExtra(newN);
-    addC(par,newN);STM[newN.id]="green";effCol[newN.id]=col;mkSprite(newN);
+    addC(par,newN);STM[newN.id]=document.getElementById("fi-c").value||"green";effCol[newN.id]=col;mkSprite(newN);
     if(par.id==="mixa"||expN.has(par.id)){visN.add(newN.id);newN.opacity=1;newN.birthTime=performance.now()/1000;expN.add(par.id);}
     calcPos();rebuildEdges();
   }

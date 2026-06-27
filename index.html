@@ -888,7 +888,11 @@ function loadState(){
     nodeMap=newMap;expN=new Set(data.expanded||[]);visN=new Set(data.visible||["mixa"]);
     curMode=data.mode||1;is2D=data.is2D||false;if(data.uidC)uidC=data.uidC;
     Object.values(nodeMap).forEach(function(n){n.opacity=visN.has(n.id)?1:0;});
-    Object.values(nodeMap).filter(function(n){return !n.parentId;}).forEach(function(n){visN.add(n.id);n.opacity=1;});
+    Object.values(nodeMap).filter(function(n){return !n.parentId;}).forEach(function(n){
+      visN.add(n.id);n.opacity=1;
+      // Ensure every root has a group color
+      if(!GRP[n.group]&&!GRP[n.id]){var grpCols=[C.blue,C.green,C.orange,C.purple,C.cyan,C.teal];GRP[n.group||n.id]=grpCols[Object.keys(GRP).length%grpCols.length];}
+    });
     return true;
   }catch(e){console.warn("Load error:",e);try{localStorage.removeItem(SKEY);}catch(e2){}return false;}
 }
@@ -975,7 +979,7 @@ function applyMode(cid){
   var all=Object.values(nodeMap);
   if(curMode===1){all.forEach(function(n){effCol[n.id]=STC[STM[n.id]||"green"]||C.gray;rfx(n.id,n.id===selId||n.id===hovId);});}
   else if(curMode===2){if(!cid){all.forEach(function(n){effCol[n.id]=n.color;rfx(n.id,n.id===selId||n.id===hovId);});return;}var f=new Set(Array.from(getAncs(cid)).concat(Array.from(getDesc(cid))));all.forEach(function(n){if(f.has(n.id)){effCol[n.id]=n.color;rfx(n.id,n.id===selId||n.id===hovId);}else{effCol[n.id]=DIM;rfx(n.id,false,DIM);}});}
-  else if(curMode===3){var hs=hlGrp.size>0;all.forEach(function(n){if(!n.parentId){effCol[n.id]=C.blue;rfx(n.id,n.id===selId||n.id===hovId);return;}var gc=GRP[n.group],lit=!hs||hlGrp.has(n.group);if(lit&&gc!==undefined){effCol[n.id]=gc;rfx(n.id,n.id===selId||n.id===hovId);}else{effCol[n.id]=DIM;rfx(n.id,false,DIM);}});}
+  else if(curMode===3){var hs=hlGrp.size>0;all.forEach(function(n){if(!n.parentId){var rc=GRP[n.group]||GRP[n.id]||n.color;effCol[n.id]=rc;rfx(n.id,n.id===selId||n.id===hovId);return;}var gc=GRP[n.group]||n.color;var lit=!hs||hlGrp.has(n.group);if(lit){effCol[n.id]=gc;rfx(n.id,n.id===selId||n.id===hovId);}else{effCol[n.id]=DIM;rfx(n.id,false,DIM);}});}
   else{all.forEach(function(n){effCol[n.id]=MONO;rfx(n.id,false,MONO);});}
 }
 function setMode(m){curMode=m;hlGrp.clear();document.querySelectorAll(".tbtn").forEach(function(b,i){b.classList.toggle("active",i+1===m);});applyMode(m===2?lastCId:null);}

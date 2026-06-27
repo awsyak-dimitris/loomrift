@@ -238,13 +238,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
       <div class="tb-nav-item" onclick="setMode(3)">Groups</div>
       <div class="tb-nav-item active" onclick="setMode(1)">Everything</div>
     </div>
-    <div class="tb-center">
-      <div id="search-bar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" placeholder="Search..." id="search-input">
-        <span class="search-kbd">⌘K</span>
-      </div>
-    </div>
+    <div class="tb-center"></div>
     <div class="tb-right">
       <button class="tb-icon-btn" title="Уведомления">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -1034,19 +1028,20 @@ var ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
 var tip=document.getElementById("tooltip"),alTip=document.getElementById("alert-tip"),lastT=performance.now()/1000;
 
 window.addEventListener("keydown",function(e){
-  if(e.code==="Space"){spDown=true;e.preventDefault();}
+  if(e.code==="Space"){spDown=true;tPan.y+=tSph.r/100;e.preventDefault();}
+  if(e.code==="ControlLeft"||e.code==="ControlRight"){tPan.y-=tSph.r/100;e.preventDefault();}
   var camSpeed=tSph.r/100;
-  if(e.code==="KeyA"||e.code==="ArrowLeft"){tPan.x-=camSpeed;e.preventDefault();}
-  if(e.code==="KeyD"||e.code==="ArrowRight"){tPan.x+=camSpeed;e.preventDefault();}
-  if(e.code==="KeyW"||e.code==="ArrowUp"){tPan.y+=camSpeed;e.preventDefault();}
-  if(e.code==="KeyS"||e.code==="ArrowDown"){tPan.y-=camSpeed;e.preventDefault();}
+  if(e.code==="KeyA"||e.code==="ArrowLeft"){tPan.x+=camSpeed;e.preventDefault();}
+  if(e.code==="KeyD"||e.code==="ArrowRight"){tPan.x-=camSpeed;e.preventDefault();}
+  if(e.code==="KeyW"||e.code==="ArrowUp"){tSph.r=Math.max(80,tSph.r-camSpeed*2);e.preventDefault();}
+  if(e.code==="KeyS"||e.code==="ArrowDown"){tSph.r=Math.min(1200,tSph.r+camSpeed*2);e.preventDefault();}
 });
 window.addEventListener("keyup",function(e){if(e.code==="Space")spDown=false;});
 canvas.addEventListener("mousedown",function(e){moved=false;lastX=e.clientX;lastY=e.clientY;if(e.button===1){isPan=true;e.preventDefault();}else if(e.button===0){if(spDown||is2D)isPan=true;else isDrag=true;}canvas.style.cursor=isPan?"move":"grabbing";});
 window.addEventListener("mouseup",function(){isDrag=false;isPan=false;canvas.style.cursor=spDown||is2D?"move":"grab";});
 window.addEventListener("mousemove",function(e){
   var dx=e.clientX-lastX,dy=e.clientY-lastY;if(Math.abs(dx)>1||Math.abs(dy)>1)moved=true;
-  if(isPan){var sc=tSph.r/700;tPan.x+=dx*sc;tPan.y-=dy*sc;}
+  if(isPan){var sc=tSph.r/700;tPan.x+=dx*sc;tPan.y+=dy*sc;}
   else if(isDrag&&!is2D){tSph.theta-=dx*.006;tSph.phi=Math.max(.05,Math.min(Math.PI-.05,tSph.phi+dy*.006));}
   lastX=e.clientX;lastY=e.clientY;
   var rect=canvas.getBoundingClientRect();mouse.x=((e.clientX-rect.left)/W)*2-1;mouse.y=-((e.clientY-rect.top)/H)*2+1;
@@ -1070,7 +1065,7 @@ canvas.addEventListener("click",function(e){if(moved||isPan||spDown)return;var r
 // Touch
 var _t0=null,_tMv=false,_tLong=null,_tPD=0,_tLastTap=0,_tLastId=null;
 canvas.addEventListener("touchstart",function(e){e.preventDefault();if(e.touches.length===1){var p=e.touches[0];_tMv=false;var tx=p.clientX,ty=p.clientY;_tLong=setTimeout(function(){var rect=canvas.getBoundingClientRect();mouse.x=((tx-rect.left)/W)*2-1;mouse.y=-((ty-rect.top)/H)*2+1;ray.setFromCamera(mouse,camera);var hit=ray.intersectObjects(Object.values(hitO).filter(function(m){return visN.has(m.userData.id);}));if(hit.length)showCtx(hit[0].object.userData.id,tx,Math.min(ty,window.innerHeight-210));},500);lastX=p.clientX;lastY=p.clientY;isDrag=true;}else if(e.touches.length===2){clearTimeout(_tLong);isDrag=false;isPan=true;_tPD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);lastX=(e.touches[0].clientX+e.touches[1].clientX)/2;lastY=(e.touches[0].clientY+e.touches[1].clientY)/2;}},{passive:false});
-canvas.addEventListener("touchmove",function(e){e.preventDefault();if(e.touches.length===1){clearTimeout(_tLong);_tMv=true;var p=e.touches[0];var dx=p.clientX-lastX,dy=p.clientY-lastY;if(is2D){var sc=tSph.r/700;tPan.x+=dx*sc;tPan.y-=dy*sc;}else{tSph.theta-=dx*.005;tSph.phi=Math.max(.05,Math.min(Math.PI-.05,tSph.phi+dy*.005));}lastX=p.clientX;lastY=p.clientY;}else if(e.touches.length===2){var nd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tSph.r=Math.max(80,Math.min(1200,tSph.r+(_tPD-nd)*2));_tPD=nd;var mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;var sc=tSph.r/700;tPan.x+=(mx-lastX)*sc;tPan.y-=(my-lastY)*sc;lastX=mx;lastY=my;}},{passive:false});
+canvas.addEventListener("touchmove",function(e){e.preventDefault();if(e.touches.length===1){clearTimeout(_tLong);_tMv=true;var p=e.touches[0];var dx=p.clientX-lastX,dy=p.clientY-lastY;if(is2D){var sc=tSph.r/700;tPan.x+=dx*sc;tPan.y+=dy*sc;}else{tSph.theta-=dx*.005;tSph.phi=Math.max(.05,Math.min(Math.PI-.05,tSph.phi+dy*.005));}lastX=p.clientX;lastY=p.clientY;}else if(e.touches.length===2){var nd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tSph.r=Math.max(80,Math.min(1200,tSph.r+(_tPD-nd)*2));_tPD=nd;var mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;var sc=tSph.r/700;tPan.x+=(mx-lastX)*sc;tPan.y+=(my-lastY)*sc;lastX=mx;lastY=my;}},{passive:false});
 canvas.addEventListener("touchend",function(e){e.preventDefault();clearTimeout(_tLong);if(!_tMv&&e.changedTouches.length===1){var tc=e.changedTouches[0];var rect=canvas.getBoundingClientRect();mouse.x=((tc.clientX-rect.left)/W)*2-1;mouse.y=-((tc.clientY-rect.top)/H)*2+1;ray.setFromCamera(mouse,camera);var hit=ray.intersectObjects(Object.values(hitO).filter(function(m){return visN.has(m.userData.id);}));if(hit.length){var hid=hit[0].object.userData.id;var now2=Date.now();if(hid===_tLastId&&now2-_tLastTap<350)showCtx(hid,tc.clientX,Math.min(tc.clientY,window.innerHeight-210));else handleClick(hid);_tLastTap=now2;_tLastId=hid;}else hideCtx();}isDrag=false;isPan=false;},{passive:false});
 
 // ===== RENDER =====

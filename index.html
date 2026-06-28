@@ -212,6 +212,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
 
 .zoom-btn{width:34px;height:34px;border-radius:50%;background:var(--elevated);border:1px solid var(--border);color:var(--fg3);font:600 16px var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--dur-fast);pointer-events:all;flex-shrink:0}
 .zoom-btn:hover{background:var(--hover);color:var(--fg);border-color:#2a3444}
+#grid-btn{width:34px;height:34px;border-radius:50%;background:var(--elevated);border:1px solid var(--border);color:var(--fg3);font:600 14px var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--dur-fast);pointer-events:all;flex-shrink:0}
+#grid-btn:hover{background:var(--hover);color:var(--green);border-color:rgba(117,255,82,.35)}
+#grid-btn.active-gp{border-color:rgba(117,255,82,.5);color:var(--green)}
+#grid-panel{position:fixed;left:62px;bottom:120px;z-index:9100;background:rgba(9,11,18,.95);border:1px solid rgba(255,255,255,.08);border-radius:12px;backdrop-filter:blur(20px);padding:8px;display:none;flex-direction:column;gap:4px;width:140px}
+#grid-panel.open{display:flex}
+.gopt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font:400 12px var(--font);color:var(--fg3);transition:background .15s,color .15s;user-select:none}
+.gopt:hover{background:rgba(255,255,255,.05);color:var(--fg)}
+.gopt.sel{background:rgba(117,255,82,.1);color:var(--green)}
+.gopt-th{width:32px;height:20px;border-radius:4px;border:1px solid rgba(255,255,255,.1);overflow:hidden;flex-shrink:0;background:#090B12}
+.gopt-th svg{width:100%;height:100%;display:block}
+#bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+#bg-grid svg{position:absolute;inset:0;width:100%;height:100%;display:none}
+#bg-grid svg.on{display:block}
 
 @media(max-width:640px){
   #topbar{height:44px}
@@ -339,8 +352,35 @@ body{font-family:var(--font);background:var(--bg);color:var(--fg);-webkit-font-s
     <div class="mbs"><button class="mb cn" onclick="closeMdl()">Отмена</button><button class="mb ok" id="mdl-ok" onclick="submitMdl()">Создать</button></div>
   </div></div>
 
+  <!-- BG GRID LAYER -->
+  <div id="bg-grid">
+    <!-- Grid 1: Rounded cells -->
+    <svg class="on" id="bgs1" viewBox="0 0 1440 901" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="g1p" x="0" y="0" width="45" height="45" patternUnits="userSpaceOnUse"><rect x=".5" y=".5" width="44" height="44" rx="5" fill="none" stroke="#3A9F64" stroke-opacity=".13" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#g1p)"/></svg>
+    <!-- Grid 2: Perspective -->
+    <svg class="" id="bgs2" viewBox="0 0 3672 1483" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M875 984H2796L3669 1482H2L875 984Z" stroke="#3A9F64" stroke-opacity=".18"/><path d="M100 1426H3571" stroke="#3A9F64" stroke-opacity=".1"/><path d="M269 1330H3402" stroke="#3A9F64" stroke-opacity=".1"/><path d="M468 1217H3203" stroke="#3A9F64" stroke-opacity=".1"/><path d="M666 1104H3005" stroke="#3A9F64" stroke-opacity=".1"/><path d="M781 1038H2890" stroke="#3A9F64" stroke-opacity=".1"/><path d="M846 1001H2826" stroke="#3A9F64" stroke-opacity=".1"/><path d="M2676 984L3440 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M2436 984L2982 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M2196 984L2523 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1956 984L2065 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1836 984V1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1716 984L1606 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1475 984L1148 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1235 984L690 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M995 984L231 1482" stroke="#3A9F64" stroke-opacity=".1"/><path d="M875 498H2796L3669 1H2L875 498Z" stroke="#3A9F64" stroke-opacity=".18"/><path d="M100 57H3571" stroke="#3A9F64" stroke-opacity=".1"/><path d="M269 153H3402" stroke="#3A9F64" stroke-opacity=".1"/><path d="M468 266H3203" stroke="#3A9F64" stroke-opacity=".1"/><path d="M666 379H3005" stroke="#3A9F64" stroke-opacity=".1"/><path d="M781 445H2890" stroke="#3A9F64" stroke-opacity=".1"/><path d="M846 481H2826" stroke="#3A9F64" stroke-opacity=".1"/><path d="M2676 498L3440 1" stroke="#3A9F64" stroke-opacity=".1"/><path d="M2316 498L2752 1" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1956 498L2065 1" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1836 498V1" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1716 498L1606 1" stroke="#3A9F64" stroke-opacity=".1"/><path d="M1355 498L919 1" stroke="#3A9F64" stroke-opacity=".1"/><path d="M995 498L231 1" stroke="#3A9F64" stroke-opacity=".1"/></svg>
+    <!-- Grid 3: Teal flat squares -->
+    <svg class="" id="bgs3" viewBox="0 0 1421 782" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="g3p" x="0" y="0" width="71" height="71" patternUnits="userSpaceOnUse"><rect x=".5" y=".5" width="70" height="70" fill="none" stroke="#1D8878" stroke-opacity=".28" stroke-width="1.2"/></pattern></defs><rect width="100%" height="100%" fill="url(#g3p)"/></svg>
+    <!-- Grid 4: Dots -->
+    <svg class="" id="bgs4" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="g4p" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="16" cy="16" r="1.2" fill="#75FF52" fill-opacity=".2"/></pattern></defs><rect width="100%" height="100%" fill="url(#g4p)"/></svg>
+    <!-- Grid 5: Diagonal -->
+    <svg class="" id="bgs5" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="g5p" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="40" stroke="#4FA7FF" stroke-opacity=".1" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#g5p)"/></svg>
+    <!-- Grid 6: None -->
+    <svg class="" id="bgs6" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <!-- Grid Picker Panel -->
+  <div id="grid-panel">
+    <div class="gopt sel" data-g="1"><div class="gopt-th"><svg viewBox="0 0 32 32"><defs><pattern id="tp1" width="8" height="8" patternUnits="userSpaceOnUse"><rect x=".5" y=".5" width="7" height="7" rx="1.5" fill="none" stroke="#3A9F64" stroke-width=".8"/></pattern></defs><rect width="32" height="32" fill="url(#tp1)"/></svg></div>Rounded</div>
+    <div class="gopt" data-g="2"><div class="gopt-th"><svg viewBox="0 0 32 20" fill="none"><line x1="16" y1="10" x2="0" y2="20" stroke="#3A9F64" stroke-opacity=".6"/><line x1="16" y1="10" x2="32" y2="20" stroke="#3A9F64" stroke-opacity=".6"/><line x1="16" y1="10" x2="0" y2="0" stroke="#3A9F64" stroke-opacity=".6"/><line x1="16" y1="10" x2="32" y2="0" stroke="#3A9F64" stroke-opacity=".6"/><line x1="0" y1="17" x2="32" y2="17" stroke="#3A9F64" stroke-opacity=".4"/><line x1="0" y1="3" x2="32" y2="3" stroke="#3A9F64" stroke-opacity=".4"/></svg></div>Perspective</div>
+    <div class="gopt" data-g="3"><div class="gopt-th"><svg viewBox="0 0 32 32"><defs><pattern id="tp3" width="8" height="8" patternUnits="userSpaceOnUse"><rect x=".5" y=".5" width="7" height="7" fill="none" stroke="#1D8878" stroke-width=".8" stroke-opacity=".8"/></pattern></defs><rect width="32" height="32" fill="url(#tp3)"/></svg></div>Teal</div>
+    <div class="gopt" data-g="4"><div class="gopt-th"><svg viewBox="0 0 32 32"><defs><pattern id="tp4" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1" fill="#75FF52" fill-opacity=".5"/></pattern></defs><rect width="32" height="32" fill="url(#tp4)"/></svg></div>Dots</div>
+    <div class="gopt" data-g="5"><div class="gopt-th"><svg viewBox="0 0 32 32"><defs><pattern id="tp5" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#4FA7FF" stroke-opacity=".6" stroke-width=".8"/></pattern></defs><rect width="32" height="32" fill="url(#tp5)"/></svg></div>Diagonal</div>
+    <div class="gopt" data-g="6"><div class="gopt-th" style="background:transparent;border-color:rgba(255,255,255,.04)"></div>None</div>
+  </div>
+
   <!-- UI RAIL -->
   <div id="ui-rail">
+    <button id="grid-btn" title="Фон">⊞</button>
     <button class="zoom-btn" onclick="tSph.r=Math.max(80,tSph.r-40)" title="Приблизить">+</button>
     <button class="zoom-btn" onclick="tSph.r=Math.min(1200,tSph.r+40)" title="Отдалить">−</button>
     <button id="rst-btn" onclick="resetAll()" title="Сбросить"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48IS0tIFVwbG9hZGVkIHRvOiBTVkcgUmVwbywgd3d3LnN2Z3JlcG8uY29tLCBHZW5lcmF0b3I6IFNWRyBSZXBvIE1peGVyIFRvb2xzIC0tPgo8c3ZnIHdpZHRoPSI4MDBweCIgaGVpZ2h0PSI4MDBweCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxwYXRoIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBkPSJNMjAsOCBDMTguNTk3NDAzNyw1LjA0MDMxMTcxIDE1LjUzNjk3MiwzIDEyLDMgQzcuMDI5NDM3MjUsMyAzLDcuMDI5NDM3MjUgMywxMiBDMywxNi45NzA1NjI3IDcuMDI5NDM3MjUsMjEgMTIsMjEgTDEyLDIxIEMxNi45NzA1NjI3LDIxIDIxLDE2Ljk3MDU2MjcgMjEsMTIgTTIxLDMgTDIxLDkgTDE1LDkiLz4KPC9zdmc+" alt="r"></button>
@@ -1348,6 +1388,27 @@ function showEverything(){
   rebuildEdges();applyMode(null);buildSB();
   tPan.set(0,60,0);tSph.r=420;
 }
+
+// ── Grid Picker ──
+(function(){
+  var btn=document.getElementById('grid-btn');
+  var panel=document.getElementById('grid-panel');
+  if(!btn||!panel)return;
+  var cur=parseInt(localStorage.getItem('lr_grid')||'1',10);
+  function applyGrid(n){
+    document.querySelectorAll('#bg-grid svg').forEach(function(s,i){s.classList.toggle('on',i+1===n);});
+    document.querySelectorAll('.gopt').forEach(function(el){el.classList.toggle('sel',parseInt(el.dataset.g)===n);});
+    btn.classList.toggle('active-gp',n!==6);
+    cur=n;localStorage.setItem('lr_grid',n);
+  }
+  applyGrid(cur);
+  btn.addEventListener('click',function(e){e.stopPropagation();panel.classList.toggle('open');});
+  panel.querySelectorAll('.gopt').forEach(function(el){
+    el.addEventListener('click',function(){applyGrid(parseInt(el.dataset.g));panel.classList.remove('open');});
+  });
+  document.addEventListener('click',function(e){if(!panel.contains(e.target)&&e.target!==btn)panel.classList.remove('open');});
+})();
+
 
 </script>
 </body>
